@@ -12,8 +12,8 @@ class PerspectiveProjection:
         self.camera_D_matrix_ = camera_D_matrix
         self.grayscale_image_ = []
 
-    def load_image(self, image_fname, display):
-        color_image = cv2.imread(image_fname, 0)
+    def load_image(self, image_fname, display=False):
+        color_image = cv2.imread(image_fname)
         self.grayscale_image_ = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
 
         if display:
@@ -30,6 +30,8 @@ class PerspectiveProjection:
 
     def scatter(self, points):
 
+        plt.scatter(points[:,0], points[:,1])
+
         return
 
     def lines(self, points):
@@ -37,13 +39,14 @@ class PerspectiveProjection:
         return
 
     def project_W_to_C(self, camera_pose, point_in_W):
-        rot_mat_W_to_C = self.angle_axis_2_rot_mat(camera_pose[:2])
+        rot_mat_W_to_C = self.angle_axis_2_rot_mat(camera_pose[:3])
         t_pos_in_W = np.reshape(camera_pose[3:], (3,1))
         point_in_W = np.reshape(point_in_W, (3,1))
 
-        point_in_C = self.camera_K_matrix_ * np.concatenate((rot_mat_W_to_C, t_pos_in_W), axis=1) * np.concatenate((point_in_W, np.ones((1,1))), dim=0)
+        point_in_C = np.matmul(self.camera_K_matrix_, np.concatenate((rot_mat_W_to_C, t_pos_in_W), axis=1))
+        point_in_C = np.matmul(point_in_C, np.concatenate((point_in_W, np.ones((1,1))), axis=0))
 
-        return point_in_C[:1] / point_in_C[2], point_in_C[2] # [u, v], lambda
+        return point_in_C[:2] / point_in_C[2], point_in_C[2] # [u, v], lambda
 
     @staticmethod
     def angle_axis_2_rot_mat(angle_axis):
@@ -58,4 +61,10 @@ class PerspectiveProjection:
 
         k_skew_symmetrix -= np.transpose(k_skew_symmetrix)
 
-        return eye3 + math.sin(theta) * k_skew_symmetrix + (1 - math.cos(theta)) * k_skew_symmetrix * k_skew_symmetrix
+        rot_mat = eye3 + math.sin(theta) * k_skew_symmetrix + (1 - math.cos(theta)) * k_skew_symmetrix * k_skew_symmetrix
+
+        # perform SVD on the rotation matrix to make the rows and columns orthonormal
+        U, S, V = np.linalg.svd(rot_mat, full_matrices=True)
+        rot_mat = np.matmul(U, V)
+
+        return rot_mat
