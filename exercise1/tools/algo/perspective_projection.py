@@ -1,3 +1,5 @@
+from operator import matmul
+from matplotlib import image
 import numpy as np
 import cv2 # OpenCV
 import math
@@ -34,12 +36,12 @@ class PerspectiveProjection:
 
         return
 
-    def animation(self, images_dir, function_handle, camera_poses, linestyle, decimation=0.1):
+    def animation(self, images_dir, function_handle, camera_poses, linestyle='o', decimation=0.001, image_distortion=False):
 
         i = 0
         for frame in sorted(os.listdir(images_dir)):
             self.load_image(images_dir + "/" + frame)
-            self.line(function_handle, camera_poses[i,:], linestyle)
+            self.line(function_handle, camera_poses[i,:], linestyle=linestyle, image_distortion=image_distortion)
             self.display_image()
             plt.pause(decimation)
             plt.clf()
@@ -47,9 +49,9 @@ class PerspectiveProjection:
 
         return
 
-    def line(self, function_handle, camera_pose, linestyle):
+    def line(self, function_handle, camera_pose, linestyle='o', image_distortion=False):
 
-        points = function_handle(camera_pose)
+        points = function_handle(camera_pose, image_distortion)
         plt.plot(points[:,0], points[:,1], linestyle)
         self.display_image()
 
@@ -65,12 +67,24 @@ class PerspectiveProjection:
         return point_in_C[:2] / point_in_C[2], point_in_C[2] # [u, v], lambda
 
     def project_W_to_C_distortion(self, camera_pose, point_in_W):
+        # Project point from frame W to frame C
         _, _, transform_mat_W_to_C = self.get_transform_mat(camera_pose)
         point_in_C = np.matmul(transform_mat_W_to_C, np.concatenate((point_in_W, np.ones((1,1))), axis=0))
 
-        # to do: finish part 3.1 of exercise 1...
+        # Project to image plane to get normalized coordinates
+        point_in_C_normalized = point_in_C / point_in_C[2]
 
-        return
+        k1, k2 = self.camera_D_matrix_[0], self.camera_D_matrix_[1]
+        r = np.linalg.norm(point_in_C_normalized[:2])
+
+        # Apply lens distortion model
+        point_in_C_distorted = point_in_C_normalized
+        point_in_C_distorted[:2] = (1 + k1 * r**2 + k2 * r**4) * point_in_C_normalized[:2]
+
+        # convert distorted normalized coordinates to get discretized pixel coordinates, [u, v]
+        pixel_coordinates = np.matmul(self.camera_K_matrix_, point_in_C_distorted * point_in_C[2])
+
+        return pixel_coordinates[:2] / pixel_coordinates[2], pixel_coordinates[2]
 
     def get_transform_mat(self, camera_pose):
         rot_mat_W_to_C = self.angle_axis_2_rot_mat(camera_pose[:3])
@@ -88,12 +102,12 @@ class PerspectiveProjection:
         k_skew_symmetrix[0, 1] = -k[2]
         k_skew_symmetrix[0, 2] = k[1]
         k_skew_symmetrix[1, 2] = -k[0]
-
         k_skew_symmetrix -= np.transpose(k_skew_symmetrix)
 
+        # Apply Rodrigues formula to get the unnormalized rotation matrix from the angle axis representation
         rot_mat = eye3 + math.sin(theta) * k_skew_symmetrix + (1 - math.cos(theta)) * k_skew_symmetrix * k_skew_symmetrix
 
-        # perform SVD on the rotation matrix to make the rows and columns orthonormal
+        # Perform SVD on the rotation matrix to make the rows and columns orthonormal
         U, _, V_transpose = np.linalg.svd(rot_mat, full_matrices=True)
         rot_mat = np.matmul(U, V_transpose)
 
