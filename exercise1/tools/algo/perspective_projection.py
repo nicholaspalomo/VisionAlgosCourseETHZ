@@ -2,7 +2,6 @@ import numpy as np
 import cv2 # OpenCV
 import math
 from matplotlib import pyplot as plt
-from numpy.lib.function_base import disp
 
 from ..utils.process_text_file import ProcessTextFile
 
@@ -34,7 +33,9 @@ class PerspectiveProjection:
 
         return
 
-    def lines(self, points):
+    def wireframe(self, points):
+
+        plt.plot(points[:,0], points[:,1], '-o')
 
         return
 
@@ -64,7 +65,7 @@ class PerspectiveProjection:
         rot_mat = eye3 + math.sin(theta) * k_skew_symmetrix + (1 - math.cos(theta)) * k_skew_symmetrix * k_skew_symmetrix
 
         # perform SVD on the rotation matrix to make the rows and columns orthonormal
-        U, S, V = np.linalg.svd(rot_mat, full_matrices=True)
-        rot_mat = np.matmul(U, V)
+        U, _, V_transpose = np.linalg.svd(rot_mat, full_matrices=True)
+        rot_mat = np.matmul(U, V_transpose)
 
         return rot_mat

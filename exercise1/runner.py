@@ -3,6 +3,8 @@ import matplotlib as mtplb
 import numpy as np
 import argparse as ap
 import pathlib
+from matplotlib import pyplot as plt
+from itertools import combinations
 
 from tools.utils.process_text_file import ProcessTextFile
 from tools.algo.perspective_projection import PerspectiveProjection
@@ -33,10 +35,26 @@ def main():
             corners_in_C[k, :] = np.transpose(point_in_C)
             k += 1
 
+    plt.figure()
     perspective_projection.scatter(corners_in_C)
     perspective_projection.display_image()
 
-    
+    # Exercise 1, 2.3
+    edge_length = 2.
+    corners_x = 4. + edge_length * np.array([0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0])
+    corners_y = 1. + edge_length * np.array([0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1])
+    corners_z = 0. - edge_length * np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1])
+    corners_in_C = np.zeros((len(corners_x), 2))
+    m = 0
+    for i, j, k in zip(corners_x, corners_y, corners_z):
+        point_in_W[0], point_in_W[1], point_in_W[2] = i, j, k
+        point_in_C, _ = perspective_projection.project_W_to_C(camera_poses[0,:], delta * point_in_W)
+        corners_in_C[m, :] = np.transpose(point_in_C)
+        m += 1
+
+    plt.figure()
+    perspective_projection.wireframe(corners_in_C)
+    perspective_projection.display_image()
 
 if __name__ == "__main__":
     main()
