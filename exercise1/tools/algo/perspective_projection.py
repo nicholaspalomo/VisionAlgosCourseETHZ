@@ -2,6 +2,7 @@ import numpy as np
 import cv2 # OpenCV
 import math
 from matplotlib import pyplot as plt
+import os
 
 from ..utils.process_text_file import ProcessTextFile
 
@@ -23,7 +24,7 @@ class PerspectiveProjection:
     def display_image(self):
         plt.imshow(self.grayscale_image_)
         plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
-        plt.show()
+        plt.show(block=False)
 
         return
 
@@ -33,9 +34,24 @@ class PerspectiveProjection:
 
         return
 
-    def wireframe(self, points):
+    def animation(self, images_dir, function_handle, camera_poses, linestyle, decimation=0.1):
 
-        plt.plot(points[:,0], points[:,1], '-o')
+        i = 0
+        for frame in sorted(os.listdir(images_dir)):
+            self.load_image(images_dir + "/" + frame)
+            self.line(function_handle, camera_poses[i,:], linestyle)
+            self.display_image()
+            plt.pause(decimation)
+            plt.clf()
+            i += 1
+
+        return
+
+    def line(self, function_handle, camera_pose, linestyle):
+
+        points = function_handle(camera_pose)
+        plt.plot(points[:,0], points[:,1], linestyle)
+        self.display_image()
 
         return
 
