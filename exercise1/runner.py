@@ -71,8 +71,8 @@ def main():
     perspective_projection.animation(current_file_path + "/images", get_cube_corners_in_C, camera_poses, '-o')
     plt.close()
 
-    # Exercise 1, 2.5
-    
+    # Exercise 1, 3.1
+
 
 
 
