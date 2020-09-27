@@ -75,7 +75,7 @@ class PerspectiveProjection:
         return pixel_coordinates, lam # [u, v], lambda
 
     def project_W_to_C(self, camera_pose, point_in_W, image_distortion=False):
-        _, _, transform_mat_W_to_C = self.get_transform_mat(camera_pose)
+        _, _, transform_mat_W_to_C = PerspectiveProjection.get_transform_mat(camera_pose)
 
         point_in_W = np.reshape(point_in_W, (3,1))
         point_in_W = np.concatenate((point_in_W, np.ones((1,1))), axis=0)
@@ -117,8 +117,9 @@ class PerspectiveProjection:
 
         return
 
-    def get_transform_mat(self, camera_pose):
-        rot_mat_W_to_C = self.angle_axis_2_rot_mat(camera_pose[:3])
+    @staticmethod
+    def get_transform_mat(camera_pose):
+        rot_mat_W_to_C = PerspectiveProjection.angle_axis_2_rot_mat(camera_pose[:3])
         t_pos_in_W = np.reshape(camera_pose[3:], (3,1))
 
         return rot_mat_W_to_C, t_pos_in_W, np.concatenate((rot_mat_W_to_C, t_pos_in_W), axis=1)
