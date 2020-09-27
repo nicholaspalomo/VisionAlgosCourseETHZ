@@ -36,7 +36,7 @@ def main():
         camera_poses[0,:],
         linestyle='o',
         image_distortion=False)
-    plt.pause(3)
+    plt.pause(1)
     plt.close()
 
     # Exercise 1, 2.3
@@ -60,20 +60,31 @@ def main():
         camera_poses[0,:],
         linestyle='-o', 
         image_distortion=False)
-    plt.pause(3)
+    plt.pause(1)
     plt.close()
 
     # Exercise 1, 2.4
-    # plt.figure()
-    # perspective_projection.animation_with_drawing_in_I(
-    #     current_file_path + "/images",
-    #     get_cube_corners_in_W(),
-    #     camera_poses,
-    #     linestyle='-o', 
-    #     image_distortion=False)
-    # plt.close()
+    plt.figure()
+    perspective_projection.animation_with_drawing_in_I(
+        current_file_path + "/images",
+        get_cube_corners_in_W(),
+        camera_poses,
+        linestyle='-o', 
+        image_distortion=False)
+    plt.close()
 
     # Exercise 1, 3.1-2
+    plt.figure()
+    perspective_projection.draw_line_in_I(
+        current_file_path + "/images/img_0001.jpg",
+        grid(),
+        camera_poses[0,:],
+        linestyle='o',
+        image_distortion=True)
+    perspective_projection.display_image()
+    plt.pause(1)
+    plt.close()
+
     plt.figure()
     perspective_projection.draw_line_in_I(
         current_file_path + "/images/img_0001.jpg",
@@ -82,7 +93,7 @@ def main():
         linestyle='-o',
         image_distortion=True)
     perspective_projection.display_image()
-    plt.pause(3)
+    plt.pause(1)
     plt.close()
 
     plt.figure()
@@ -95,6 +106,13 @@ def main():
     plt.close()
 
     # Exercise 1, 3.3
+    plt.figure()
+    perspective_projection.undistort_image(
+        current_file_path + "/images/img_0001.jpg",
+        camera_poses[0,:]
+    )
+    plt.pause(10)
+    plt.close()
 
 
 if __name__ == "__main__":
