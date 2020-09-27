@@ -108,10 +108,9 @@ def main():
     # Exercise 1, 3.3
     plt.figure()
     perspective_projection.undistort_image(
-        current_file_path + "/images/img_0001.jpg",
-        camera_poses[0,:]
+        current_file_path + "/images/img_0001.jpg"
     )
-    plt.pause(10)
+    plt.pause(100)
     plt.close()
 
 

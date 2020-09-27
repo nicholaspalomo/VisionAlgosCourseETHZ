@@ -102,34 +102,30 @@ class PerspectiveProjection:
 
         return pixel_coordinates[:2] / pixel_coordinates[2], point_in_C[2] # [u, v], lambda
 
-    def undistort_image(self, image_path, camera_pose):
+    def undistort_image(self, image_path):
         self.load_image(image_path)
 
+        K_inv = np.linalg.inv(self.camera_K_matrix_)
         k1, k2 = self.camera_D_matrix_[0], self.camera_D_matrix_[1]
 
-        mesh_x, mesh_y = self.meshgrid(self.grayscale_image_.shape[0], self.grayscale_image_.shape[1])
-        mesh_x /= mesh_x.shape[0]
-        mesh_y /= mesh_y.shape[0]
+        mesh_x, mesh_y = self.meshgrid(self.grayscale_image_.shape[1], self.grayscale_image_.shape[0])
+        mesh_x_unscaled = mesh_x.copy()
+        mesh_y_unscaled = mesh_y.copy()
         points_in_I = np.transpose(np.hstack((mesh_x, mesh_y, np.ones((mesh_x.shape[0], 1)))))
 
-        # too tired to figure out what I want to do with the code in this function...
-
         k1, k2 = self.camera_D_matrix_[0], self.camera_D_matrix_[1]
 
-        warped_points_in_I = points_in_I
+        warped_points_in_I = points_in_I.copy()
         for i in range(points_in_I.shape[1]):
-            r = np.linalg.norm(points_in_I[:2, i])
-            warped_points_in_I[:2, i] = (1 + k1 * r**2 + k2 * r**4) * points_in_I[:2, i]
+            normalized_image_coords = np.reshape(matmul(K_inv, points_in_I[:, i]), (3,1))
+            r = np.linalg.norm(normalized_image_coords[:2])
+            warped_points_in_I[:2, i] = (1 + k1 * r**2 + k2 * r**4) * normalized_image_coords[:2].squeeze(axis=1)
 
-        warped_points_in_I = matmul(self.camera_K_matrix_, warped_points_in_I).astype(int)
+        warped_points_in_I = np.round(matmul(self.camera_K_matrix_, warped_points_in_I)).astype(int)
         
-        tmp = self.grayscale_image_
-        j = 0
-        k = 0
+        tmp = self.grayscale_image_.copy()
         for i in range(points_in_I.shape[1]):
-            self.grayscale_image_[j % self.grayscale_image_.shape[0], k % self.grayscale_image_.shape[1]] = tmp[warped_points_in_I[0, i], warped_points_in_I[1, i]]
-            j += 1
-            k += 1
+            self.grayscale_image_[int(mesh_y_unscaled[i]), int(mesh_x_unscaled[i])] = tmp[min(warped_points_in_I[1, i], self.grayscale_image_.shape[0]-1), min(warped_points_in_I[0, i], self.grayscale_image_.shape[1]-1)]
 
         self.display_image()
 
