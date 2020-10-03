@@ -108,24 +108,27 @@ class PerspectiveProjection:
         K_inv = np.linalg.inv(self.camera_K_matrix_)
         k1, k2 = self.camera_D_matrix_[0], self.camera_D_matrix_[1]
 
-        mesh_x, mesh_y = self.meshgrid(self.grayscale_image_.shape[1], self.grayscale_image_.shape[0])
-        mesh_x_unscaled = mesh_x.copy()
-        mesh_y_unscaled = mesh_y.copy()
-        points_in_I = np.transpose(np.hstack((mesh_x, mesh_y, np.ones((mesh_x.shape[0], 1)))))
+        unnormalized_pixel_coords = self.meshgrid(\
+            self.grayscale_image_.shape[1],\
+            self.grayscale_image_.shape[0])
 
         k1, k2 = self.camera_D_matrix_[0], self.camera_D_matrix_[1]
 
-        warped_points_in_I = points_in_I.copy()
-        for i in range(points_in_I.shape[1]):
-            normalized_image_coords = np.reshape(matmul(K_inv, points_in_I[:, i]), (3,1))
-            r = np.linalg.norm(normalized_image_coords[:2])
-            warped_points_in_I[:2, i] = (1 + k1 * r**2 + k2 * r**4) * normalized_image_coords[:2].squeeze(axis=1)
-
-        warped_points_in_I = np.round(matmul(self.camera_K_matrix_, warped_points_in_I)).astype(int)
+        normalized_image_coords = np.matmul(unnormalized_pixel_coords, K_inv.transpose())
+        r = np.linalg.norm(normalized_image_coords[:, :, :2], axis=2)
+        distortion_factor = np.repeat(np.expand_dims(1 + k1 * r**2 + k2 * r**4, 2), 2, axis=2)
+        distorted_normalized_coordinates = normalized_image_coords.copy()
+        distorted_normalized_coordinates[:, :, :2] = np.multiply(distortion_factor, normalized_image_coords[:, :, :2])
         
-        tmp = self.grayscale_image_.copy()
-        for i in range(points_in_I.shape[1]):
-            self.grayscale_image_[int(mesh_y_unscaled[i]), int(mesh_x_unscaled[i])] = tmp[min(warped_points_in_I[1, i], self.grayscale_image_.shape[0]-1), min(warped_points_in_I[0, i], self.grayscale_image_.shape[1]-1)]
+        distorted_pixel_coords = np.matmul(distorted_normalized_coordinates,\
+            self.camera_K_matrix_.transpose()).astype(int)
+        distorted_pixel_coords[:,:,0] = np.clip(distorted_pixel_coords[:,:,0], 0, self.grayscale_image_.shape[1]-1)
+        distorted_pixel_coords[:,:,1] = np.clip(distorted_pixel_coords[:,:,1], 0, self.grayscale_image_.shape[0]-1)
+
+        image_shape = self.grayscale_image_.shape
+        self.grayscale_image_ = self.grayscale_image_\
+            [distorted_pixel_coords[:,:,1].reshape((-1,1)),\
+            distorted_pixel_coords[:,:,0].reshape((-1,1))].reshape(image_shape)
 
         self.display_image()
 
@@ -133,10 +136,8 @@ class PerspectiveProjection:
 
     def meshgrid(self, x_dim, y_dim):
         mesh_x, mesh_y = np.meshgrid(np.linspace(0, x_dim-1, x_dim), np.linspace(0, y_dim-1, y_dim))
-        mesh_x = np.reshape(mesh_x, (mesh_x.shape[0]*mesh_x.shape[1], 1))
-        mesh_y = np.reshape(mesh_y, (mesh_x.shape[0], 1))
 
-        return mesh_x, mesh_y
+        return np.dstack((mesh_x, mesh_y, np.ones((mesh_x.shape))))
 
     @staticmethod
     def get_transform_mat(camera_pose):
