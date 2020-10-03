@@ -114,16 +114,30 @@ class PerspectiveProjection:
 
         k1, k2 = self.camera_D_matrix_[0], self.camera_D_matrix_[1]
 
-        normalized_image_coords = np.matmul(unnormalized_pixel_coords, K_inv.transpose())
-        r = np.linalg.norm(normalized_image_coords[:, :, :2], axis=2)
-        distortion_factor = np.repeat(np.expand_dims(1 + k1 * r**2 + k2 * r**4, 2), 2, axis=2)
+        normalized_image_coords = np.matmul(\
+            unnormalized_pixel_coords,\
+            K_inv.transpose())
+
+        r = np.linalg.norm(\
+            normalized_image_coords[:, :, :2],\
+            axis=2)
+
+        distortion_factor = np.repeat(\
+            np.expand_dims(1 + k1 * r**2 + k2 * r**4, 2), 2,\
+            axis=2)
+
         distorted_normalized_coordinates = normalized_image_coords.copy()
-        distorted_normalized_coordinates[:, :, :2] = np.multiply(distortion_factor, normalized_image_coords[:, :, :2])
+        distorted_normalized_coordinates[:, :, :2] = np.multiply(\
+            distortion_factor,\
+            normalized_image_coords[:, :, :2])
         
         distorted_pixel_coords = np.matmul(distorted_normalized_coordinates,\
             self.camera_K_matrix_.transpose()).astype(int)
-        distorted_pixel_coords[:,:,0] = np.clip(distorted_pixel_coords[:,:,0], 0, self.grayscale_image_.shape[1]-1)
-        distorted_pixel_coords[:,:,1] = np.clip(distorted_pixel_coords[:,:,1], 0, self.grayscale_image_.shape[0]-1)
+
+        distorted_pixel_coords[:,:,0] = np.clip(\
+            distorted_pixel_coords[:,:,0], 0, self.grayscale_image_.shape[1]-1)
+        distorted_pixel_coords[:,:,1] = np.clip(\
+            distorted_pixel_coords[:,:,1], 0, self.grayscale_image_.shape[0]-1)
 
         image_shape = self.grayscale_image_.shape
         self.grayscale_image_ = self.grayscale_image_\
