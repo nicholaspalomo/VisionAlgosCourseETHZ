@@ -5,6 +5,8 @@ import argparse as ap
 import pathlib
 from matplotlib import pyplot as plt
 import os
+import sys
+sys.path.append(".")
 
 from tools.utils.process_text_file import ProcessTextFile
 from tools.algo.perspective_projection import PerspectiveProjection
