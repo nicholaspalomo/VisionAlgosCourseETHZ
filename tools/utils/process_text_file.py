@@ -5,9 +5,9 @@ class ProcessTextFile:
         self.fname_ = ""
         self.file_contents_ = []
 
-    def read_file(self, fname):
+    def read_file(self, fname, delimiter=None):
         self.fname_ = fname
-        self.file_contents_ = np.loadtxt(self.fname_, dtype=np.double, comments='#')
+        self.file_contents_ = np.loadtxt(self.fname_, dtype=np.double, comments='#', delimiter=delimiter)
 
         return self.file_contents_
 

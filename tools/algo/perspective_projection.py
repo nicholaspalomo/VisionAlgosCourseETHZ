@@ -171,11 +171,13 @@ class PerspectiveProjection:
         # Apply Rodrigues formula to get the unnormalized rotation matrix from the angle axis representation
         rot_mat = eye3 + math.sin(theta) * k_skew_symmetrix + (1 - math.cos(theta)) * k_skew_symmetrix * k_skew_symmetrix
 
-        # Perform SVD on the rotation matrix to make the rows and columns orthonormal
-        U, _, V_transpose = np.linalg.svd(rot_mat, full_matrices=True)
-        rot_mat = np.matmul(U, V_transpose)
+        return PerspectiveProjection.orthonormal_mat(rot_mat)
 
-        return rot_mat
+    @staticmethod
+    def orthonormal_mat(mat):
+        # Perform SVD on rotation matrix to make the rows and columns orthonormal
+        U, _, V_transpose = np.linalg.svd(mat, full_matrices=True)
+        return np.matmul(U, V_transpose)
 
     @staticmethod
     def skew_symmetric_3(vec):
