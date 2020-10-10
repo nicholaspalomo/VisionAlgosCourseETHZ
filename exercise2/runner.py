@@ -17,7 +17,7 @@ def main():
 
     text_file_handler = ProcessTextFile()
     camera_K_matrix = text_file_handler.read_file(current_file_path + "/K.txt")
-    p_W_corners = text_file_handler.read_file(current_file_path + "/p_W_corners.txt")
+    p_W_corners = text_file_handler.read_file(current_file_path + "/p_W_corners.txt") * 0.01 # convert from cm to m
     detected_corners = text_file_handler.read_file(current_file_path + "/detected_corners.txt")
 
     dlt = DLT(camera_K_matrix, np.array([0., 0.]))
