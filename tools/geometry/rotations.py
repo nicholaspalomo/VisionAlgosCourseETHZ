@@ -16,34 +16,22 @@ class Rotations:
         Convert a rotation from rotation matrix to quaternion representation. Assumes that the columns of the rotation matrix are orthonomal!
         """
 
-        tr = R[0,0] + R[1,1] + R[2,2]
+        i, j, k = 0, 1, 2
+        if R[1,1] > R[0,1]:
+            i, j, k = 1, 2, 0
 
-        if tr > 0.:
-            S = np.sqrt(tr + 1.) * 2.
-            qw = S / 4.
-            qx = (R[2,1] - R[1,2]) / S
-            qy = (R[0,2] - R[2,0]) / S
-            qz = (R[1,0] - R[0,1]) / S
-        elif R[0,0] > R[1,1] and R[0,0] > R[2,2]:
-            S = np.sqrt(1. + R[0,0] - R[1,1] - R[2,2]) * 2.
-            qw = (R[2,1] - R[1,2]) / S
-            qx = S / 4.
-            qy = (R[0,1] + R[1,0]) / S
-            qz = (R[0,2] + R[2,0]) / S
-        elif R[1,1] > R[2,2]:
-            S = np.sqrt(1. + R[1,1] - R[0,0] - R[2,2]) * 2.
-            qw = (R[0,2] - R[2,0]) / S
-            qx = (R[0,1] + R[1,0]) / S
-            qy = S / 4.
-            qz = (R[1,2] + R[2,1]) / S
-        else:
-            S = np.sqrt(1. + R[2,2] - R[0,0] - R[1,1]) * 2.
-            qw = (R[1,0] - R[0,1]) / S
-            qx = (R[0,2] + R[2,0]) / S
-            qy = (R[1,2] + R[2,1]) / S
-            qz = S / 4.
+        if R[2,2] > R[i,i]:
+            i, j, k = 2, 0, 1
 
-        return np.array([qw, qx, qy, qz])
+        t = R[i,i] - (R[j,j] + R[k,k]) + 1
+        q = np.array([0, 0, 0, 0])
+        q[0] = R[k,j] - R[j,k]
+        q[i+1] = t
+        q[j+1] = R[i,j] + R[j,i]
+        q[k+1] = R[k,i] + R[i,k]
+        q = np.multiply(q, 0.5 / math.sqrt(t))
+
+        return q
 
     @staticmethod
     def quat_2_rot_mat(q):

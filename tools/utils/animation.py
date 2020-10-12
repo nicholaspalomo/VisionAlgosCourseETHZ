@@ -33,7 +33,6 @@ class Animation:
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         writer = None
         (w, h) = 400, 400 # frame size for video
-        zeros = None
 
         # Draw the trajectory
         fig = plt.figure(figsize=(4,4), dpi=100)
@@ -47,7 +46,6 @@ class Animation:
             if writer is None:
                 # store image dimensions, initialize video writer, construct array of zeros
                 writer = cv2.VideoWriter(video_filename, fourcc, fps, (w, h), True)
-                zeros = np.zeros((h, w), dtype="uint8")
 
             if k == 0:
                 

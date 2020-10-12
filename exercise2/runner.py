@@ -1,3 +1,4 @@
+from os import device_encoding
 import cv2 # OpenCV
 import matplotlib as mtplb
 import numpy as np
@@ -29,34 +30,22 @@ def main():
     # Show the corner projects projected in the image
     plt.figure()
     dlt.draw_line_in_I_from_points_in_I(
-        current_file_path + "/images_undistorted/img_0001.jpg", 
-        np.reshape(image_coordinates[0,:], (-1, 2), order='C'), 
+        current_file_path + "/images_undistorted/img_0001.jpg",
+        image_coordinates[:,:,0], 
         linestyle='o')
-    plt.pause(0.1)
+    plt.pause(1)
     plt.close()
 
     # Create an animation of the camera in 3D space
-    rot_mat2 = np.array([0, -1, 0, 0, 0, -1, -1, 0, 0]).reshape((3,3))
-    rot_mat3 = np.array([1, 0, 0, 0, 1, 0, 0, 0, -1]).reshape((3,3))
-    rot_mat4 = np.matmul(rot_mat2, rot_mat3)
-
-    R_C_W = dlt.M_tilde[:,:3].reshape((3,3,-1))
-    t_C_W = dlt.M_tilde[:,-1].reshape((3,1,-1))
-    quats = np.zeros((4,1,R_C_W.shape[2]))
-    transl = np.zeros(t_C_W.shape)
-    rot_mat = np.zeros(R_C_W.shape)
-    for i in range(t_C_W.shape[2]):
-        rot_mat[:,:,i] = np.matmul(rot_mat2, R_C_W[:,:,i]).transpose()
-        transl[:,0,i] = np.matmul(-rot_mat[:,:,i], t_C_W[:,0,i])
-        quats[:,:,i] = Rotations.rot_mat_2_quat(rot_mat[:,:,i]).reshape((4,1))
-
-    # form a matrix of the quaternion rotations between the world coordinate frame and the camera
-    p_W_corners = np.matmul(p_W_corners, rot_mat2.transpose())
-
-
-    Animation.plot_trajectory_3D(15, transl.reshape((-1,3)), quats.reshape((-1,4)), p_W_corners)
-
-
+    quats = np.zeros((detected_corners.shape[0],4))
+    transl = np.zeros((detected_corners.shape[0],3))
+    rot_mat = np.zeros((3,3,detected_corners.shape[0]))
+    for i in range(detected_corners.shape[0]):
+        rot_mat[:,:,i] = dlt.R_W_C[:,:,i].transpose()
+        transl[i,:] = np.matmul(-dlt.R_W_C[:,:,i].transpose(), dlt.t_W_C[i,:])
+        quats[i,:] = Rotations.rot_mat_2_quat(rot_mat[:,:,i])
+        
+    Animation.plot_trajectory_3D(30, transl, quats, p_W_corners)
 
 if __name__ == "__main__":
     main()
