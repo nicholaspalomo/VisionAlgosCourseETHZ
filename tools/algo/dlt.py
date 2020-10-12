@@ -37,10 +37,8 @@ class DLT:
                 normalized_coordinates[j,:,i] = np.matmul(K_inv, p_[j,:,i].transpose()).transpose()
 
         Q = np.zeros((2 * num_points, num_points))
-
         M = np.zeros((3, 4, p.shape[0]))
         alphas = np.zeros((p.shape[0], 1))
-
         for k in range(p.shape[0]):
             j = 0
             for i in range(num_points):
@@ -61,7 +59,6 @@ class DLT:
 
             M[:,:3,k] = rot_mat
             M[:,-1,k] = M_tilde[:,-1] * alpha
-
             alphas[k] = alpha
 
         self.M_tilde = M
@@ -77,15 +74,6 @@ class DLT:
         K = self.perspective_projection.camera_K_matrix_
 
         P_ = np.concatenate((P, np.ones((P.shape[0],1))), axis=1)
-
-        # pixel_coordinates_unnormalized = np.matmul(np.kron(np.eye(p.shape[0]), K), np.matmul(M, P_.transpose())).transpose()
-        # pixel_coordinates_unnormalized = np.reshape(pixel_coordinates_unnormalized[np.newaxis,:,:], (-1, p.shape[0], 3), order='C').transpose()
-        # pixel_coordinates = []
-        # for i in range(pixel_coordinates_unnormalized.shape[2]):
-        #     pixel_coordinates.append(np.divide(pixel_coordinates_unnormalized[0,:,i], pixel_coordinates_unnormalized[2,:,i]))
-        #     pixel_coordinates.append(np.divide(pixel_coordinates_unnormalized[1,:,i], pixel_coordinates_unnormalized[2,:,i]))            
-
-        # return np.array(pixel_coordinates).transpose()
 
         pixel_coordinates_unnormalized = np.zeros((P.shape[0],3,p.shape[0]))
         pixel_coordinates = np.zeros((P.shape[0],2,p.shape[0]))

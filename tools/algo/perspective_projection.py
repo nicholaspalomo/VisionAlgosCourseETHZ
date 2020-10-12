@@ -112,8 +112,6 @@ class PerspectiveProjection:
             self.grayscale_image_.shape[1],\
             self.grayscale_image_.shape[0])
 
-        k1, k2 = self.camera_D_matrix_[0], self.camera_D_matrix_[1]
-
         normalized_image_coords = np.matmul(\
             unnormalized_pixel_coords,\
             K_inv.transpose())
