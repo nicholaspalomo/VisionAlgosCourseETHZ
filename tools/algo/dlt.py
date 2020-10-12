@@ -25,10 +25,14 @@ class DLT:
         P_ = np.concatenate((P, np.ones((P.shape[0], 1))), axis=1)
         num_points = P_.shape[0]
         
-        p_ = np.reshape(p, (-1, 2), order='A')
-        p_ = np.concatenate((p_, np.ones((p_.shape[0], 1))), axis=1)
+        p_ = p[:,np.newaxis,:].transpose()
+        p_ = np.reshape(p_, (int(p_.shape[0]/2), 2, -1), order='C')
+        p_ = np.concatenate((p_, np.ones((p_.shape[0], 1, p_.shape[2]))), axis=1)
 
-        normalized_coordinates = np.matmul(p_, K_inv.transpose())
+        normalized_coordinates = np.zeros(p_.shape)
+        for i in range(p_.shape[2]):
+            for j in range(p_.shape[0]):
+                normalized_coordinates[j,:,i] = np.matmul(K_inv, p_[j,:,i].transpose()).transpose()
 
         Q = np.zeros((2 * num_points, num_points))
 
@@ -39,8 +43,8 @@ class DLT:
             j = 0
             for i in range(num_points):
                 P_i = P_[np.newaxis,i,:]
-                Q[j, :] = np.concatenate((P_i, np.zeros((1,4)), P_i *  -normalized_coordinates[k+i, 0]), axis=1)
-                Q[j+1, :] = np.concatenate((np.zeros((1,4)), P_i, P_i *  -normalized_coordinates[k+i, 1]), axis=1)
+                Q[j, :] = np.concatenate((P_i, np.zeros((1,4)), P_i *  -normalized_coordinates[i, 0, k]), axis=1)
+                Q[j+1, :] = np.concatenate((np.zeros((1,4)), P_i, P_i *  -normalized_coordinates[i, 1, k]), axis=1)
                 j += 2
 
             _, _, Vt = np.linalg.svd(Q, full_matrices=True)
