@@ -37,13 +37,17 @@ def main():
     plt.close()
 
     # Create an animation of the camera in 3D space
+    rot_mat2 = np.array([-1, 0, 0, 0, 0, -1, 0, -1, 0]).reshape((3,3)) # additional rotation to align W coordinate frame given in figure 1 of the assignment with the standard x-y-z frame in which the x-y axes are in the ground plane and the z-axis is normal
+
     quats = np.zeros((detected_corners.shape[0],4))
     transl = np.zeros((detected_corners.shape[0],3))
     rot_mat = np.zeros((3,3,detected_corners.shape[0]))
     for i in range(detected_corners.shape[0]):
-        rot_mat[:,:,i] = dlt.R_W_C[:,:,i].transpose()
-        transl[i,:] = np.matmul(-dlt.R_W_C[:,:,i].transpose(), dlt.t_W_C[i,:])
+        rot_mat[:,:,i] = np.matmul(rot_mat2, dlt.R_W_C[:,:,i].transpose())
+        transl[i,:] = np.matmul(-rot_mat[:,:,i], dlt.t_W_C[i,:])
         quats[i,:] = Rotations.rot_mat_2_quat(rot_mat[:,:,i])
+
+    p_W_corners = np.matmul(p_W_corners, rot_mat2.transpose())
         
     Animation.plot_trajectory_3D(30, transl, quats, p_W_corners)
 
