@@ -64,6 +64,8 @@ class Rotations:
         R[2,1] = 2 * s * (q[2]*q[3] + q[1]*q[0])
         R[2,2] = 1 - 2 * s * (q[1]**2 + q[2]**2)
 
+        R = Rotations.orthonormal_mat(R)
+
         return R
 
     @staticmethod
@@ -71,3 +73,9 @@ class Rotations:
         theta = math.acos((np.trace(rot_mat) - 1) / 2)
 
         return 1 / (2 * math.sin(theta)) * np.array([rot_mat[2,1] - rot_mat[1,2], rot_mat[0,2] - rot_mat[2,0], rot_mat[1,0] - rot_mat[0,1]]).reshape((3,1))
+
+    @staticmethod
+    def orthonormal_mat(mat):
+        # Perform SVD on rotation matrix to make the rows and columns orthonormal
+        U, _, V_transpose = np.linalg.svd(mat, full_matrices=True)
+        return np.matmul(U, V_transpose)

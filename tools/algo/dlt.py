@@ -74,7 +74,6 @@ class DLT:
 
         pixel_coordinates_unnormalized = np.matmul(np.kron(np.eye(p.shape[0]), K), np.matmul(M, P_.transpose())).transpose()
         pixel_coordinates_unnormalized = np.reshape(pixel_coordinates_unnormalized[np.newaxis,:,:], (-1, p.shape[0], 3), order='C').transpose()
-        # pixel_coordinates_unnormalized = np.reshape(pixel_coordinates_unnormalized, (p.shape[0], -1), order='C')
         pixel_coordinates = []
         for i in range(pixel_coordinates_unnormalized.shape[2]):
             pixel_coordinates.append(np.divide(pixel_coordinates_unnormalized[0,:,i], pixel_coordinates_unnormalized[2,:,i]))
