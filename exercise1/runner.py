@@ -110,7 +110,8 @@ def main():
     # Exercise 1, 3.3
     plt.figure()
     perspective_projection.undistort_image(
-        current_file_path + "/images/img_0001.jpg"
+        current_file_path + "/images/img_0001.jpg",
+        bilinear=True # Apply bilinear filtering to the image when undistorting
     )
     plt.pause(100)
     plt.close()

@@ -102,7 +102,7 @@ class PerspectiveProjection:
 
         return pixel_coordinates[:2] / pixel_coordinates[2], point_in_C[2] # [u, v], lambda
 
-    def undistort_image(self, image_path):
+    def undistort_image(self, image_path, bilinear=True):
         self.load_image(image_path)
 
         K_inv = np.linalg.inv(self.camera_K_matrix_)
@@ -112,9 +112,7 @@ class PerspectiveProjection:
             self.grayscale_image_.shape[1],\
             self.grayscale_image_.shape[0])
 
-        normalized_image_coords = np.matmul(\
-            unnormalized_pixel_coords,\
-            K_inv.transpose())
+        normalized_image_coords = self.pixel_coords_2_normalized(unnormalized_pixel_coords)
 
         r = np.linalg.norm(\
             normalized_image_coords[:, :, :2],\
@@ -129,22 +127,59 @@ class PerspectiveProjection:
             distortion_factor,\
             normalized_image_coords[:, :, :2])
         
-        distorted_pixel_coords = np.matmul(distorted_normalized_coordinates,\
-            self.camera_K_matrix_.transpose()).astype(int)
-
-        distorted_pixel_coords[:,:,0] = np.clip(\
-            distorted_pixel_coords[:,:,0], 0, self.grayscale_image_.shape[1]-1)
-        distorted_pixel_coords[:,:,1] = np.clip(\
-            distorted_pixel_coords[:,:,1], 0, self.grayscale_image_.shape[0]-1)
+        distorted_pixel_coords = self.normalized_2_pixel_coords(distorted_normalized_coordinates)
+        distorted_pixel_coords = self.clip_pixel_coords(distorted_pixel_coords)
 
         image_shape = self.grayscale_image_.shape
+        # if bilinear:
+        #     img_BR = self.grayscale_image_[\
+        #         np.clip(np.floor(distorted_pixel_coords[:,:,1] + 1).astype(int).reshape((-1,1)), 0, image_shape[0]-1),\
+        #         np.clip(np.floor(distorted_pixel_coords[:,:,0] + 1).astype(int).reshape((-1,1)), 0, image_shape[1]-1)].reshape(image_shape)
+            
+        #     img_BL = self.grayscale_image_[\
+        #         np.clip(np.floor(distorted_pixel_coords[:,:,1] + 1).astype(int).reshape((-1,1)), 0, image_shape[0]-1),\
+        #         np.clip(np.ceil(distorted_pixel_coords[:,:,0] - 1).astype(int).reshape((-1,1)), 0, image_shape[1]-1)].reshape(image_shape)
+
+        #     img_TL = self.grayscale_image_[\
+        #         np.clip(np.ceil(distorted_pixel_coords[:,:,1] - 1).astype(int).reshape((-1,1)), 0, image_shape[0]-1),\
+        #         np.clip(np.ceil(distorted_pixel_coords[:,:,0] - 1).astype(int).reshape((-1,1)), 0, image_shape[1]-1)].reshape(image_shape)
+
+        #     img_TR = self.grayscale_image_[\
+        #         np.clip(np.ceil(distorted_pixel_coords[:,:,1] - 1).astype(int).reshape((-1,1)), 0, image_shape[0]-1),\
+        #         np.clip(np.floor(distorted_pixel_coords[:,:,0] + 1).astype(int).reshape((-1,1)), 0, image_shape[1]-1)].reshape(image_shape)
+
+        #     self.grayscale_image_ = 0.25 * (img_BR + img_BL + img_TL + img_TR)
+
+        # else:
+
         self.grayscale_image_ = self.grayscale_image_\
-            [distorted_pixel_coords[:,:,1].reshape((-1,1)),\
-            distorted_pixel_coords[:,:,0].reshape((-1,1))].reshape(image_shape)
+            [distorted_pixel_coords[:,:,1].astype(int).reshape((-1,1)),\
+            distorted_pixel_coords[:,:,0].astype(int).reshape((-1,1))].reshape(image_shape)
 
         self.display_image()
 
         return
+
+    def normalized_2_pixel_coords(self, normalized_coords):
+
+        return np.matmul(normalized_coords,\
+            self.camera_K_matrix_.transpose())
+
+    def pixel_coords_2_normalized(self, pixel_coords):
+
+        return np.matmul(\
+            pixel_coords,\
+            np.linalg.inv(self.camera_K_matrix_).transpose())
+
+    def clip_pixel_coords(self, coords):
+
+        coords[:,:,0] = np.clip(\
+            coords[:,:,0], 0, self.grayscale_image_.shape[1]-1).copy()
+        coords[:,:,1] = np.clip(\
+            coords[:,:,1], 0, self.grayscale_image_.shape[0]-1).copy()
+
+        return coords
+
 
     def meshgrid(self, x_dim, y_dim):
         mesh_x, mesh_y = np.meshgrid(np.linspace(0, x_dim-1, x_dim), np.linspace(0, y_dim-1, y_dim))
