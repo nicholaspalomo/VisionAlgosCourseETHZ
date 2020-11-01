@@ -2,10 +2,13 @@ from operator import matmul
 from os import stat
 from matplotlib import image
 import numpy as np
+from numpy.core.fromnumeric import sort
+from scipy.spatial.distance import cdist
 import cv2 # OpenCV
 import math
 from matplotlib import pyplot as plt
 import os
+from tools.utils.image import Image
 
 class Harris:
     def __init__(self, params):
@@ -113,6 +116,56 @@ class Harris:
             descriptors[i,:] = np.reshape(padded_img[kp[0]-r:kp[0]+r, kp[1]-r:kp[1]+r], (1,-1))
 
         return descriptors
+
+    def get_keypoints_descriptors_from_image(self, img_path):
+
+        img = Image()
+        img.load_image(img_path)
+
+        score_harris = self.compute_haris_score(img.gs)
+        score_harris = Image.normalize(score_harris)
+        
+        keypoints = self.select_keypoints(score_harris)
+
+        return keypoints, self.get_keypoint_descriptors(keypoints, img.gs)
+
+    def match_descriptors(self, query_descriptors, database_descriptors):
+
+        lamda = self.match_lambda
+
+        dists = cdist(database_descriptors, query_descriptors, metric='euclidean').transpose()
+        matches = np.argmin(dists, axis=1)
+        dists = np.min(dists, axis=1)
+
+        sorted_dists = np.sort(dists)
+        sorted_dists = sorted_dists[sorted_dists > 0]
+
+        min_non_zero_dist = sorted_dists[0]
+
+        matches[dists >= lamda * min_non_zero_dist] = 0
+
+        # remove double matches
+        _, unique_match_idxs = np.unique(matches, return_index=True)
+
+        unique_matches = np.zeros(matches.shape)
+        unique_matches[unique_match_idxs] = matches[unique_match_idxs]
+
+        return unique_matches
+
+    def plot_matches(self, matches, query_keypoints, database_keypoints):
+
+        query_indices = np.argwhere(matches > 0)
+        match_indices = matches[matches > 0].astype(int)
+
+        x_from = np.reshape(query_keypoints[query_indices, 0], (-1,1))
+        x_to = np.reshape(database_keypoints[match_indices, 0], (-1,1))
+        y_from = np.reshape(query_keypoints[query_indices, 1], (-1,1))
+        y_to = np.reshape(database_keypoints[match_indices, 1], (-1,1))
+
+        for i in range(y_from.shape[0]):
+            plt.plot(np.array([y_from[i], y_to[i]]), np.array([x_from[i], x_to[i]]), color='g', linestyle='-', linewidth=2)
+
+        return
 
     @staticmethod
     def col2row_matrix(mat):
