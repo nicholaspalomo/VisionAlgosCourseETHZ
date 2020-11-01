@@ -47,15 +47,6 @@ class Harris:
 
         return R_shi_tomasi
 
-    @staticmethod
-    def padarray(array, corner_patch_size):
-
-        patch_radius = math.floor(corner_patch_size / 2)
-
-        cv2.copyMakeBorder(array, patch_radius, patch_radius, patch_radius, patch_radius, cv2.BORDER_CONSTANT)
-
-        return array
-
     def convolve_sobel_xy(self, img):
 
         img_normalized = img.copy() / np.max(img)
@@ -86,3 +77,46 @@ class Harris:
                 signal_convolved[row - padding, col - padding] = patch_convolved
 
         return signal_convolved
+
+    def select_keypoints(self, score_mat):
+
+        r = self.nonmaximum_suppression_radius
+
+        keypoints = np.zeros((self.num_keypoints ,2)).astype(int)
+
+        padded_score_mat = np.array(Harris.padarray(score_mat, r))
+
+        for i in range(self.num_keypoints):
+            kp = np.argmax(padded_score_mat)
+            kp = Harris.sub2ind(padded_score_mat.shape, kp)
+            keypoints[i,:] = np.asarray(kp).astype(int) - r
+            padded_score_mat[kp[0]-r:kp[0]+r, kp[1]-r:kp[1]+r] = 0
+
+        return keypoints
+
+    def plot_keypoints(self, keypoints, linestyle="x", marker_size=3):
+
+        keypoints_tmp = keypoints.copy()
+        if keypoints.shape[1] > keypoints.shape[0]:
+            keypoints_tmp = np.transpose(keypoints_tmp)
+
+        plt.plot(keypoints_tmp[:,1], keypoints_tmp[:,0], marker=linestyle, linestyle=" ", markersize=marker_size, color="r")
+
+        return
+
+    @staticmethod
+    def padarray(array, corner_patch_size):
+
+        patch_radius = math.floor(corner_patch_size / 2)
+
+        array = cv2.copyMakeBorder(array, patch_radius, patch_radius, patch_radius, patch_radius, cv2.BORDER_CONSTANT)
+
+        return array
+
+    @staticmethod
+    def sub2ind(sz, ind):
+
+        row = ind // sz[1]
+        col = ind % sz[1]
+
+        return (row, col)
