@@ -27,8 +27,6 @@ class Harris:
 
         R_harris[R_harris < 0] = 0
 
-        R_harris = Harris.padarray(R_harris, self.corner_patch_size)
-
         return R_harris
 
     def compute_shi_tomasi_score(self, img):
@@ -42,8 +40,6 @@ class Harris:
         R_shi_tomasi = trace / 2 - (trace**2 / 4 - determinant)**0.5
 
         R_shi_tomasi[R_shi_tomasi < 0] = 0
-
-        R_shi_tomasi = Harris.padarray(R_shi_tomasi, self.corner_patch_size)
 
         return R_shi_tomasi
 
@@ -84,7 +80,7 @@ class Harris:
 
         keypoints = np.zeros((self.num_keypoints ,2)).astype(int)
 
-        padded_score_mat = np.array(Harris.padarray(score_mat, r))
+        padded_score_mat = np.array(Harris.padarray(score_mat, 2*r))
 
         for i in range(self.num_keypoints):
             kp = np.argmax(padded_score_mat)
@@ -96,22 +92,47 @@ class Harris:
 
     def plot_keypoints(self, keypoints, linestyle="x", marker_size=3):
 
-        keypoints_tmp = keypoints.copy()
-        if keypoints.shape[1] > keypoints.shape[0]:
-            keypoints_tmp = np.transpose(keypoints_tmp)
+        keypoints_tmp = Harris.col2row_matrix(keypoints)
 
         plt.plot(keypoints_tmp[:,1], keypoints_tmp[:,0], marker=linestyle, linestyle=" ", markersize=marker_size, color="r")
 
         return
 
+    def get_keypoint_descriptors(self, keypoints, img):
+
+        keypoints_tmp = Harris.col2row_matrix(keypoints)
+
+        r = self.descriptor_radius
+
+        descriptors = np.zeros((keypoints_tmp.shape[0],(2*r)**2))
+        
+        padded_img = np.array(Harris.padarray(img, 2*r))
+
+        for i in range(keypoints_tmp.shape[0]):
+            kp = keypoints_tmp[i,:] + r
+            descriptors[i,:] = np.reshape(padded_img[kp[0]-r:kp[0]+r, kp[1]-r:kp[1]+r], (1,-1))
+
+        return descriptors
+
+    @staticmethod
+    def col2row_matrix(mat):
+        
+        mat_tmp = mat.copy()
+        if mat.shape[1] > mat.shape[0]:
+            mat_tmp = np.transpose(mat_tmp)
+
+        return mat_tmp
+
     @staticmethod
     def padarray(array, corner_patch_size):
 
+        array_padded = array.copy()
+
         patch_radius = math.floor(corner_patch_size / 2)
 
-        array = cv2.copyMakeBorder(array, patch_radius, patch_radius, patch_radius, patch_radius, cv2.BORDER_CONSTANT)
+        array_padded = cv2.copyMakeBorder(array, patch_radius, patch_radius, patch_radius, patch_radius, cv2.BORDER_CONSTANT)
 
-        return array
+        return array_padded
 
     @staticmethod
     def sub2ind(sz, ind):

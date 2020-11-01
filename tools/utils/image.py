@@ -31,7 +31,7 @@ class Image:
     @staticmethod
     def imagesc(img):
 
-        img_norm = (img - img.min()) / (img.max() - img.min())
+        img_norm = (img - img.min()) / (img.max() - img.min() + 1e-5)
 
         Image.imshow(img_norm)
 
@@ -40,7 +40,7 @@ class Image:
     @staticmethod
     def normalize(img):
 
-        return (img - img.min()) / (img.max() - img.min())
+        return (img - img.min()) / (img.max() - img.min() + 1e-5)
 
     @staticmethod
     def imshow(img):
