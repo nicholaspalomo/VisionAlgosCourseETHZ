@@ -162,7 +162,7 @@ class SIFT():
 
         # Normalize the descriptors such that they have unit norm
         descriptors = np.asarray(descriptors)
-        row_sums = descriptors.sum(axis=1)
+        row_sums = np.linalg.norm(descriptors, ord=2, axis=1)
         descriptors = descriptors / row_sums[:, np.newaxis]
 
         final_keypoint_locations = np.asarray(final_keypoint_locations)
