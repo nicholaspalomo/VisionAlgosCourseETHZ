@@ -140,7 +140,34 @@ class SIFT():
                             # derotate patch
                             patch_derotated = SIFT.derotate_patch(img, (row, col), 16, G_dir_loc_principal)
 
-        return (descriptors, keypoint_locations)
+                            G_mag_loc_derotated, G_dir_loc_derotated = SIFT.imgradient(patch_derotated)
+
+                            G_mag_loc_derotated_w = G_mag_loc_derotated * gaussWindow
+
+                        N_tmp = 1
+                        for ix in range(4):
+                            for iy in range(4):
+                                N_w = SIFT.weightedhistc(np.reshape(G_dir_loc_derotated[4*ix-3:4*ix, 4*iy-3:4*iy], (1, 16)), np.reshape(G_mag_loc_derotated_w[4*ix-3:4*ix, 4*iy], (1, 16)), np.linspace(-180, 180, num=9))
+
+                                image_descriptors[corner_idx, N_tmp:N_tmp+7] = N_w[0, :8]
+                                N_tmp += 8
+
+                # Adapt keypoint location such that they correspond to the original image dimensions
+                image_keypoint_locations = image_keypoint_locations * 2**(i - 1)
+
+                # Only store valid keypoints
+                descriptors.append(image_descriptors[is_valid, :])
+
+                final_keypoint_locations.append(image_keypoint_locations[is_valid, :])
+
+        # Normalize the descriptors such that they have unit norm
+        descriptors = np.asarray(descriptors)
+        row_sums = descriptors.sum(axis=1)
+        descriptors = descriptors / row_sums[:, np.newaxis]
+
+        final_keypoint_locations = np.asarray(final_keypoint_locations)
+
+        return (descriptors, final_keypoint_locations)
 
     @staticmethod
     def derotate_patch(img, loc, patch_size, ori):
