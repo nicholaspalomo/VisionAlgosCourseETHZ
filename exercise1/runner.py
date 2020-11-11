@@ -5,6 +5,8 @@ import argparse as ap
 import pathlib
 from matplotlib import pyplot as plt
 import os
+import sys
+sys.path.append(".")
 
 from tools.utils.process_text_file import ProcessTextFile
 from tools.algo.perspective_projection import PerspectiveProjection
@@ -13,9 +15,9 @@ def main():
     current_file_path = str(pathlib.Path(__file__).parent.absolute()) + "/data"
 
     text_file_handler = ProcessTextFile()
-    camera_K_matrix = text_file_handler.read_file(current_file_path + "/K.txt")
-    camera_D_matrix = text_file_handler.read_file(current_file_path + "/D.txt")
-    camera_poses = text_file_handler.read_file(current_file_path + "/poses.txt")
+    camera_K_matrix = text_file_handler.read_file(current_file_path + "/K.txt", delimiter=None)
+    camera_D_matrix = text_file_handler.read_file(current_file_path + "/D.txt", delimiter=None)
+    camera_poses = text_file_handler.read_file(current_file_path + "/poses.txt", delimiter=None)
 
     perspective_projection = PerspectiveProjection(camera_K_matrix, camera_D_matrix)
 
@@ -108,7 +110,8 @@ def main():
     # Exercise 1, 3.3
     plt.figure()
     perspective_projection.undistort_image(
-        current_file_path + "/images/img_0001.jpg"
+        current_file_path + "/images/img_0001.jpg",
+        bilinear=True # Apply bilinear filtering to the image when undistorting
     )
     plt.pause(100)
     plt.close()
