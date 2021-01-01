@@ -87,7 +87,7 @@ class Harris:
 
         for i in range(self.num_keypoints):
             kp = np.argmax(padded_score_mat)
-            kp = Harris.sub2ind(padded_score_mat.shape, kp)
+            kp = Harris.ind2sub(padded_score_mat.shape, kp)
             keypoints[i,:] = np.asarray(kp).astype(int) - r
             padded_score_mat[kp[0]-r:kp[0]+r, kp[1]-r:kp[1]+r] = 0
 
@@ -188,7 +188,7 @@ class Harris:
         return array_padded
 
     @staticmethod
-    def sub2ind(sz, ind):
+    def ind2sub(sz, ind):
 
         row = ind // sz[1]
         col = ind % sz[1]
