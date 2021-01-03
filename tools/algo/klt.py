@@ -123,7 +123,7 @@ class KLT:
 
         return np.array([dx1, dx2]) - r_D, ssds
 
-    def track_klt(self, img, img_warped, x_T, r_T, num_iters, do_plot=True):
+    def track_klt(self, img, img_warped, x_T, r_T, num_iters, do_plot=False):
         """
         Method to track a patch using the Lucas-Kanade-Tomasi tracker
 
@@ -163,7 +163,7 @@ class KLT:
 
         kernel = np.array([1, 0, -1])
         for it in range(num_iters):
-            big_IWT = self.get_warped_patch(img_warped, W, x_T, r_T + 1)
+            big_IWT = self.get_warped_patch(img_warped, W, x_T, r_T + 1) # r_T + 1 : enlarge the patch by 1 pixel on each side such that the resulting convolution only reduces the big patch (big_IWT) to the same size as the template patch (patch_T)
             IWT = big_IWT[1:-1, 1:-1]
             i = np.reshape(IWT, (-1,1), order='F')
 
@@ -184,22 +184,27 @@ class KLT:
             W += np.reshape(delta_p, (2, 3), order='F')
 
             if do_plot:
-                # plt.clf()
                 tmp_mat = np.concatenate((IWT, patch_T, (patch_T - IWT)), axis=1)
                 ax[0].imshow(tmp_mat)
                 ax[0].set_title('I(W(T)), I_R(T) and the difference')
+                ax[0].get_xaxis().set_visible(False)
+                ax[0].get_yaxis().set_visible(False)
 
                 tmp_mat = np.concatenate((IWTx, IWTy), axis=1)
                 ax[1].imshow(tmp_mat)
                 ax[1].set_title('warped gradients')
+                ax[1].get_xaxis().set_visible(False)
+                ax[1].get_yaxis().set_visible(False)
 
                 descentcat = np.zeros((n, 6*n))
                 for j in range(6):
                     descentcat[:, j*n:(j+1)*n] = np.reshape(didp[:,j], (n, n))
                 ax[2].imshow(descentcat)
                 ax[2].set_title('steepest descent images')
+                ax[2].get_xaxis().set_visible(False)
+                ax[2].get_yaxis().set_visible(False)
+
                 plt.pause(0.1)
-                # plt.close()
 
             p_hist[:, it + 1] = np.reshape(W, (-1,))
 
@@ -207,7 +212,56 @@ class KLT:
                 p_hist = p_hist[:, :it+1]
                 break
 
+        if do_plot:
+            plt.close()
+
         return W, p_hist
+
+    def track_klt_robustly(self, img, img_warped, x_T, r_T, num_iters, lamda):
+        """
+        Bidirection error check to verify that keypoints are consistently tracked and to ensure that points tracks that are inconsistent be culled
+
+        Inputs:
+        img - unwarped (reference) image
+        img_warped - warped image
+        x_T - location to track in the template image
+        r_T - radius about the location to track in template image
+        num_iters - number of iterations of KLT algorithm
+        lamda - threshold above which to cull keypoints inconsistently tracked
+
+        Outputs:
+        W - warp parameters
+        keep - indicator of whether or not to keep tracking of keypoint
+        """
+
+        W, _ = self.track_klt(img, img_warped, x_T, r_T, num_iters, do_plot=False)
+
+        delta_keypoint = W[:, -1]
+
+        W_inv, _ = self.track_klt(img_warped, img, x_T + delta_keypoint, r_T, num_iters, do_plot=False)
+
+        delta_keypoint_inv = W_inv[:, -1]
+
+        keep = np.linalg.norm(delta_keypoint + delta_keypoint_inv) < lamda
+
+        return W, keep
+
+    def plot_matches(self, matches, query_keypoints, database_keypoints, ax):
+
+        query_indices = np.squeeze(np.argwhere(matches > -1))
+        match_indices = matches[matches > -1].astype(int)
+
+        x_from = np.reshape(query_keypoints[query_indices, 0], (-1,1))
+        x_to = np.reshape(database_keypoints[match_indices, 0], (-1,1))
+        y_from = np.reshape(query_keypoints[query_indices, 1], (-1,1))
+        y_to = np.reshape(database_keypoints[match_indices, 1], (-1,1))
+
+        for i in range(y_from.shape[0]):
+            ax.plot(np.array([y_from[i], y_to[i]]), np.array([x_from[i], x_to[i]]), color='g', linestyle='-', linewidth=2)
+            ax.get_xaxis().set_visible(False)
+            ax.get_yaxis().set_visible(False)
+
+        return
 
     @staticmethod
     def conv2(v1, v2, m, mode='same'):
