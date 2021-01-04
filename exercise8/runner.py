@@ -108,7 +108,7 @@ def main():
     file = ProcessTextFile()
     img.gs = cv2.resize(img.gs, dsize=(int(0.25 * img.gs.shape[1]), int(0.25 * img.gs.shape[0])), interpolation=cv2.INTER_CUBIC)
     keypoints_rc = file.read_file(imgs_path + '/keypoints.txt') / 4
-    keypoints = np.flipud(np.transpose(keypoints_rc[0:5, :]))
+    keypoints = np.flipud(np.transpose(keypoints_rc[0:50, :]))
 
     # fig = plt.figure(constrained_layout=True)
     # plt.imshow(img.gs)
