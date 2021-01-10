@@ -8,8 +8,6 @@ from matplotlib import pyplot as plt
 import os
 from scipy.signal import convolve2d
 
-from .perspective_projection import PerspectiveProjection
-
 class KLT:
     def __init__(self):
 

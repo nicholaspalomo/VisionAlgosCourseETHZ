@@ -2,6 +2,7 @@ from operator import matmul
 from os import stat
 from matplotlib import image
 import numpy as np
+from numpy import matlib
 import cv2 # OpenCV
 import math
 from matplotlib import pyplot as plt
@@ -27,46 +28,32 @@ class DLT:
         P_ = np.concatenate((P, np.ones((P.shape[0], 1))), axis=1)
         num_points = P_.shape[0]
         
-        p_ = p[:,np.newaxis,:].transpose()
-        p_ = np.reshape(p_, (int(p_.shape[0]/2), 2, -1), order='C')
-        p_ = np.concatenate((p_, np.ones((p_.shape[0], 1, p_.shape[2]))), axis=1)
+        p_ = np.concatenate((p, np.ones((p.shape[0], 1))), axis=1)
 
-        normalized_coordinates = np.zeros(p_.shape)
-        for i in range(p_.shape[2]):
-            for j in range(p_.shape[0]):
-                normalized_coordinates[j,:,i] = np.matmul(K_inv, p_[j,:,i].transpose()).transpose()
+        normalized_coordinates = np.matmul(K_inv, p_.transpose()).transpose()
 
-        Q = np.zeros((2 * num_points, num_points))
-        M = np.zeros((3, 4, p.shape[0]))
-        alphas = np.zeros((p.shape[0], 1))
-        for k in range(p.shape[0]):
-            j = 0
-            for i in range(num_points):
-                P_i = P_[np.newaxis,i,:]
-                Q[j, :] = np.concatenate((P_i, np.zeros((1,4)), P_i *  -normalized_coordinates[i, 0, k]), axis=1)
-                Q[j+1, :] = np.concatenate((np.zeros((1,4)), P_i, P_i *  -normalized_coordinates[i, 1, k]), axis=1)
-                j += 2
+        Q = np.zeros((2 * num_points, 12))
+        for k in range(P_.shape[0]):
+            P_i = np.transpose(P_[k,:,np.newaxis])
+            Q[2*k, :] = np.concatenate((P_i, np.zeros((1,4)), P_i *  -normalized_coordinates[k, 0]), axis=1)
+            Q[2*k+1, :] = np.concatenate((np.zeros((1,4)), P_i, P_i *  -normalized_coordinates[k, 1]), axis=1)
 
-            _, _, Vt = np.linalg.svd(Q, full_matrices=True)
+        _, _, Vt = np.linalg.svd(Q, full_matrices=True)
 
-            M_tilde = np.reshape(Vt[-1,:], (3,4), order='A')
-            if np.linalg.det(M_tilde[:,:3]) < 0:
-                M_tilde *= -1
+        self.M_tilde = np.reshape(np.transpose(Vt)[:,-1], (4,3), order='F').transpose()
+        if np.linalg.det(self.M_tilde[:,:3]) < 0:
+            self.M_tilde *= -1
 
-            rot_mat = PerspectiveProjection.orthonormal_mat(M_tilde[:,:3])
+        self.R_W_C = PerspectiveProjection.orthonormal_mat(self.M_tilde[:,:3].copy())
 
-            alpha = np.linalg.norm(rot_mat) / np.linalg.norm(M_tilde[:,:3])
+        self.alpha = np.linalg.norm(self.R_W_C) / np.linalg.norm(self.M_tilde[:,:3])
 
-            M[:,:3,k] = rot_mat
-            M[:,-1,k] = M_tilde[:,-1] * alpha
-            alphas[k] = alpha
+        self.t_W_C = self.alpha * self.M_tilde[:,-1, np.newaxis]
 
-        self.M_tilde = M
-        self.alpha = alphas
-        self.R_W_C = M[:,:3,:]
-        self.t_W_C = M[:,-1,:].transpose()
+        self.M_tilde[:,:3] = self.R_W_C.copy()
+        self.M_tilde[:,-1] = self.alpha * self.M_tilde[:,-1].copy()
 
-        return M, alphas
+        return self.M_tilde.copy(), self.alpha.copy()
 
     def reproject_points(self, p, P):
         M, _ = self.estimate_pose_dlt(p, P)
@@ -75,15 +62,27 @@ class DLT:
 
         P_ = np.concatenate((P, np.ones((P.shape[0],1))), axis=1)
 
-        pixel_coordinates_unnormalized = np.zeros((P.shape[0],3,p.shape[0]))
-        pixel_coordinates = np.zeros((P.shape[0],2,p.shape[0]))
-        for i in range(p.shape[0]):
-            pixel_coordinates_unnormalized[:,:,i] = np.matmul(K, np.matmul(M[:,:,i], P_.transpose())).transpose()
+        pixel_coordinates_unnormalized = np.matmul(K, np.matmul(M, P_.transpose())).transpose()
 
-            pixel_coordinates[:,0,i] = np.divide(pixel_coordinates_unnormalized[:,0,i], pixel_coordinates_unnormalized[:,2,i])
-            pixel_coordinates[:,1,i] = np.divide(pixel_coordinates_unnormalized[:,1,i], pixel_coordinates_unnormalized[:,2,i])
+        pixel_coordinates = np.zeros((p.shape[0], 2))
+        pixel_coordinates[:,0] = np.divide(pixel_coordinates_unnormalized[:,0], pixel_coordinates_unnormalized[:,2])
+
+        pixel_coordinates[:,1] = np.divide(pixel_coordinates_unnormalized[:,1], pixel_coordinates_unnormalized[:,2])
 
         return pixel_coordinates
+
+    def project_points(self, points_3d):
+
+        K = self.perspective_projection.camera_K_matrix_
+
+        # transform coordinates from camera frame (points_3d) to image plane
+        projected_points = np.matmul(K, points_3d.transpose()).transpose()
+        projected_points = np.divide(projected_points, np.matlib.repmat(projected_points[:,2], 3, 1).transpose())
+
+        # apply distortion
+        projected_points = self.perspective_projection.distort_points(projected_points[:,:2])
+
+        return projected_points
 
     def draw_line_in_I_from_points_in_I(self, image_path, points_in_I, linestyle='o'):
 

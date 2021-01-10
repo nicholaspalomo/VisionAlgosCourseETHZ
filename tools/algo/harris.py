@@ -103,17 +103,23 @@ class Harris:
 
     def get_keypoint_descriptors(self, keypoints, img):
 
-        keypoints_tmp = Harris.col2row_matrix(keypoints)
+        # keypoints_tmp = Harris.col2row_matrix(keypoints)
 
         r = self.descriptor_radius
 
-        descriptors = np.zeros((keypoints_tmp.shape[0],(2*r)**2))
+        # descriptors = np.zeros((keypoints_tmp.shape[0],(2*r)**2))
         
         padded_img = np.array(Harris.padarray(img, 2*r))
 
-        for i in range(keypoints_tmp.shape[0]):
-            kp = keypoints_tmp[i,:] + r
+        # for i in range(keypoints_tmp.shape[0]):
+        #     kp = (keypoints_tmp[i,:] + r).astype(np.int)
+        #     descriptors[i,:] = np.reshape(padded_img[kp[0]-r:kp[0]+r, kp[1]-r:kp[1]+r], (1,-1))
+
+        descriptors = np.zeros((keypoints.shape[0],(2*r)**2))
+        for i in range(keypoints.shape[0]):
+            kp = (keypoints[i,:] + r).astype(np.int)
             descriptors[i,:] = np.reshape(padded_img[kp[0]-r:kp[0]+r, kp[1]-r:kp[1]+r], (1,-1))
+
 
         return descriptors
 
@@ -152,7 +158,7 @@ class Harris:
 
         return unique_matches
 
-    def plot_matches(self, matches, query_keypoints, database_keypoints):
+    def plot_matches(self, matches, query_keypoints, database_keypoints, ax=plt.gca()):
 
         query_indices = np.argwhere(matches > 0)
         match_indices = matches[matches > 0].astype(int)
@@ -163,7 +169,7 @@ class Harris:
         y_to = np.reshape(database_keypoints[match_indices, 1], (-1,1))
 
         for i in range(y_from.shape[0]):
-            plt.plot(np.array([y_from[i], y_to[i]]), np.array([x_from[i], x_to[i]]), color='g', linestyle='-', linewidth=2)
+            ax.plot(np.array([y_from[i], y_to[i]]), np.array([x_from[i], x_to[i]]), color='g', linestyle='-', linewidth=2)
 
         return
 

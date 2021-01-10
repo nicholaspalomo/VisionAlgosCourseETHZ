@@ -100,9 +100,9 @@ def main():
     # print("Displacement best explained by (dx, dy) = ({}, {})".format(str(dx[0]), str(dx[1])))
 
     ## Part 3: Recovering the warp with KLT
-    # W, p_hist = klt.track_klt(img.gs, img_warped, x_T, r_T, num_iters, do_plot=True)
+    W, p_hist = klt.track_klt(img.gs, img_warped, x_T, r_T, num_iters, do_plot=True)
 
-    # print("Point moved by {}, should move by (-10, -6)".format(W[:,-1]))
+    print("Point moved by {}, should move by (-10, -6)".format(W[:,-1]))
 
     ## Part 4: Applying KLT to KITTI
     file = ProcessTextFile()

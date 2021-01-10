@@ -85,14 +85,20 @@ class PerspectiveProjection:
         if image_distortion:
             point_in_C_normalized = point_in_C / point_in_C[2]
 
-            k1, k2 = self.camera_D_matrix_[0], self.camera_D_matrix_[1]
-            r = np.linalg.norm(point_in_C_normalized[:2])
-
-            # Apply lens distortion model
-            point_in_C = point_in_C_normalized
-            point_in_C[:2] = (1 + k1 * r**2 + k2 * r**4) * point_in_C_normalized[:2]
+            point_in_C = self.distort_points(point_in_C_normalized)
 
         return point_in_C
+
+    def distort_points(self, point_in_C_normalized):
+
+        k1, k2 = self.camera_D_matrix_[0], self.camera_D_matrix_[1]
+        r = np.linalg.norm(point_in_C_normalized[:2])
+
+        # Apply lens distortion model
+        point_in_C_ = point_in_C_normalized
+        point_in_C_[:2] = (1 + k1 * r**2 + k2 * r**4) * point_in_C_normalized[:2]
+
+        return point_in_C_
 
     def project_C_to_I(self, point_in_C, image_distortion=False):
 

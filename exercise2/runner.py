@@ -25,7 +25,14 @@ def main():
 
     dlt = DLT(camera_K_matrix, np.array([0., 0.]))
 
-    image_coordinates = dlt.reproject_points(detected_corners, p_W_corners)
+    image_coordinates = np.zeros((p_W_corners.shape[0], 2, detected_corners.shape[0]))
+    R_W_C = np.zeros((3, 3, detected_corners.shape[0]))
+    t_W_C = np.zeros((3, 1, detected_corners.shape[0]))
+    for row in range(detected_corners.shape[0]):
+        corners = np.reshape(detected_corners[row, :], (-1, 2))
+        image_coordinates[:, :, row] = dlt.reproject_points(corners, p_W_corners)
+        R_W_C[:, :, row] = dlt.R_W_C
+        t_W_C[:, :, row] = dlt.t_W_C
 
     # Show the corner projects projected in the image
     plt.figure()
@@ -43,8 +50,8 @@ def main():
     transl = np.zeros((detected_corners.shape[0],3))
     rot_mat = np.zeros((3,3,detected_corners.shape[0]))
     for i in range(detected_corners.shape[0]):
-        rot_mat[:,:,i] = np.matmul(rot_mat2, dlt.R_W_C[:,:,i].transpose())
-        transl[i,:] = np.matmul(-rot_mat[:,:,i], dlt.t_W_C[i,:])
+        rot_mat[:,:,i] = np.matmul(rot_mat2, R_W_C[:,:,i].transpose())
+        transl[i,:] = np.matmul(-rot_mat[:,:,i], t_W_C[:,:,i]).squeeze(axis=1)
         quats[i,:] = Rotations.rot_mat_2_quat(rot_mat[:,:,i])
 
     p_W_corners = np.matmul(p_W_corners, rot_mat2.transpose())
