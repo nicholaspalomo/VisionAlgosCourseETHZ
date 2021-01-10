@@ -134,13 +134,13 @@ def main():
     img = Image()
     img.load_image(query_image_path)
     ax[0].imshow(img.gs)
-    ax[0].plot(ransac.query_keypoints[:,1], ransac.query_keypoints[:,0], c='r', marker='x', linewidth=2)
+    ax[0].plot(ransac.query_keypoints[:,1], ransac.query_keypoints[:,0], c='r', marker='x', linewidth=2, linestyle=" ")
     ransac.plot_matches(ax=ax[0])
     ax[0].set_title("All keypoints and matches")
 
     ax[1].imshow(img.gs)
-    ax[1].plot(ransac.matched_query_keypoints[(1-inlier_mask)>0, 1], ransac.matched_query_keypoints[(1-inlier_mask)>0, 0], c='r', marker='x', linewidth=2)
-    ax[1].plot(ransac.matched_query_keypoints[inlier_mask>0, 1], ransac.matched_query_keypoints[inlier_mask>0, 0], c='g', marker='x')
+    ax[1].plot(ransac.matched_query_keypoints[(1-inlier_mask)>0, 1], ransac.matched_query_keypoints[(1-inlier_mask)>0, 0], c='r', marker='x', linewidth=2, linestyle=" ")
+    ax[1].plot(ransac.matched_query_keypoints[inlier_mask>0, 1], ransac.matched_query_keypoints[inlier_mask>0, 0], c='g', marker='x', linestyle=" ")
     ransac.plot_matches(ax=ax[1], mask=True)
     ax[1].set_title("Inlier and outlier matches")
 
