@@ -88,7 +88,7 @@ class RANSAC:
 
         return self.ransac_localization(matched_query_keypoints, corresponding_landmarks, K, use_p3p=use_p3p)
 
-    def ransac_localization(self,  matched_query_keypoints, corresponding_landmarks, K, use_p3p=False, tweaked_for_more=False, adaptive=True):
+    def ransac_localization(self,  matched_query_keypoints, corresponding_landmarks, K, use_p3p=False, tweaked_for_more=True, adaptive=True):
         """
         Inputs:
         matched_query_keypoints - keypoints should be 2 x num_keypoints. All matches should be 1 x num_keypoints and correspond to the output from the match_descriptors method of Harris class

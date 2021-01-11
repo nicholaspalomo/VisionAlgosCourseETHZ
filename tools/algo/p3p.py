@@ -48,7 +48,7 @@ class P3P:
 
         e1 = f1
         e3 = np.cross(f1, f2)
-        norm_e3 = np.sum(np.matmul(e3, e3))**0.5
+        norm_e3 = np.matmul(e3, e3)**0.5
         e3 /= norm_e3
         e2 = np.cross(e3, e1)
 
@@ -66,7 +66,7 @@ class P3P:
 
             e1 = f1
             e3 = np.cross(f1, f2)
-            norm_e3 = np.sum(np.matmul(e3, e3))**0.5
+            norm_e3 = np.matmul(e3, e3)**0.5
             e3 /= norm_e3
             e2 = np.cross(e3, e1)
 
@@ -81,10 +81,10 @@ class P3P:
         # Creation of intermediate world frame
 
         n1 = P2 - P1
-        norm_n1 = np.sum(np.matmul(n1, n1))**0.5
+        norm_n1 = np.matmul(n1, n1)**0.5
         n1 /= norm_n1
         n3 = np.cross(n1, P3 - P1)
-        norm_n3 = np.sum(np.matmul(n3, n3))**0.5
+        norm_n3 = np.matmul(n3, n3)**0.5
         n3 /= norm_n3
         n2 = np.cross(n3, n1)
 
@@ -100,7 +100,7 @@ class P3P:
         p_1 = P3[0,0]
         p_2 = P3[1,0]
 
-        cos_beta = np.sum(f1*f2)
+        cos_beta = np.matmul(f1,f2)
         b = 1/(1 - cos_beta**2) - 1
 
         if cos_beta < 0:
@@ -186,7 +186,7 @@ class P3P:
                 [sin_alpha, -cos_alpha*cos_theta, -cos_alpha*sin_theta], \
                 [0, -sin_theta, cos_theta]])
             
-            R = np.matmul(np.matmul(np.transpose(N), np.transpose(R)), T)
+            R = np.matmul(np.transpose(N), np.matmul(np.transpose(R), T))
             
             poses[:, 4*i] = C[:,0]
             poses[:, 4*i+1:4*i+4] = R
