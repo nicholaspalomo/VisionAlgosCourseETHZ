@@ -17,6 +17,30 @@ from tools.utils.image import Image
 from tools.utils.process_text_file import ProcessTextFile
 from tools.algo.ransac import RANSAC
 
+def ransac_and_plots(ax, query_image_path, ransac, inlier_mask, max_num_inliers_history, algo='DLT'):
+
+    img = Image()
+    img.load_image(query_image_path)
+    ax[0].imshow(img.gs)
+    ax[0].plot(ransac.query_keypoints[:,1], ransac.query_keypoints[:,0], c='r', marker='x', linewidth=2, linestyle=" ")
+    ransac.plot_matches(ax=ax[0])
+    ax[0].set_title("({}) All keypoints and matches".format(algo))
+
+    ax[1].imshow(img.gs)
+    if np.any(inlier_mask):
+        ax[1].plot(ransac.matched_query_keypoints[(1-inlier_mask)>0, 1], ransac.matched_query_keypoints[(1-inlier_mask)>0, 0], c='r', marker='x', linewidth=2, linestyle=" ")
+        ax[1].plot(ransac.matched_query_keypoints[inlier_mask>0, 1], ransac.matched_query_keypoints[inlier_mask>0, 0], c='g', marker='x', linestyle=" ")
+        ransac.plot_matches(ax=ax[1], mask=True)
+        ax[1].set_title("({}) Inlier and outlier matches".format(algo))
+
+    ax[2].plot(np.arange(1, max_num_inliers_history.shape[0]+1), max_num_inliers_history)
+    ax[2].set_title("({}) Maximum inlier count over RANSAC iterations".format(algo))
+
+    plt.show(block=False)
+    plt.pause(1)
+    for axi in ax:
+        axi.clear()
+
 def rms(x):
 
     return np.mean(x**2)**0.5
@@ -91,8 +115,8 @@ def main():
 
     ax[1].set_title('Max num inliers vs iterations')
 
-    plt.show()
-    plt.pause(0.1)
+    plt.show(block=False)
+    plt.pause(1)
     plt.close()
 
     x = xstart + np.arange(0, 1, 0.01)
@@ -114,6 +138,7 @@ def main():
 
     # Run ransac with DLT
     for flag, algo in zip((False, True), ('DLT', 'P3P')):
+        img.load_image(path + '/000000.png')
         R_C_W, t_C_W, inlier_mask, max_num_inliers_history, num_iteration_history = ransac.detect_localize_landmarks_ransac(p_W_landmarks, K, params, img.gs, keypoints, query_image_path, use_p3p=flag)
 
         T_C_W = np.concatenate((R_C_W, t_C_W[:,np.newaxis]), axis=1)
@@ -127,13 +152,12 @@ def main():
         ax.set_xlabel("Iteration")
         ax.set_ylabel("({}) Estimated Max Number of Iterations".format(algo))
 
-        plt.show()
-        plt.pause(0.1)
+        plt.show(block=False)
+        plt.pause(1)
         plt.close()
 
         _, ax = plt.subplots(3, 1)
 
-        img = Image()
         img.load_image(query_image_path)
         ax[0].imshow(img.gs)
         ax[0].plot(ransac.query_keypoints[:,1], ransac.query_keypoints[:,0], c='r', marker='x', linewidth=2, linestyle=" ")
@@ -149,11 +173,20 @@ def main():
         ax[2].plot(np.arange(1, max_num_inliers_history.shape[0]+1), max_num_inliers_history)
         ax[2].set_title("({}) Maximum inlier count over RANSAC iterations".format(algo))
 
-        plt.show()
-        plt.pause(0.1)
+        plt.show(block=False)
+        plt.pause(1)
         plt.close()
 
     ## Part 5 - Repeat the previous part, but for all frames
+    img.load_image(path + '/000000.png')
+    _, ax = plt.subplots(3, 1)
+    for i in range(10):
+        ransac = RANSAC()
+        query_image_path = path + '/%06d.png' % i
+
+        R_C_W, t_C_W, inlier_mask, max_num_inliers_history, num_iteration_history = ransac.detect_localize_landmarks_ransac(p_W_landmarks, K, params, img.gs, keypoints, query_image_path, use_p3p=False, tweaked_for_more=True)
+
+        ransac_and_plots(ax, query_image_path, ransac, inlier_mask, max_num_inliers_history, algo='DLT')
 
 if __name__ == '__main__':
 

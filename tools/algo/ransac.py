@@ -66,7 +66,7 @@ class RANSAC:
 
         return best_guess_history, max_num_inliers_history
 
-    def detect_localize_landmarks_ransac(self, p_W_landmarks, K, harris_params, database_img, database_keypoints, query_img_path, use_p3p=False):
+    def detect_localize_landmarks_ransac(self, p_W_landmarks, K, harris_params, database_img, database_keypoints, query_img_path, tweaked_for_more=True, use_p3p=False):
 
         self.detector = Harris(harris_params)
 
@@ -86,7 +86,7 @@ class RANSAC:
         self.matched_query_keypoints = query_keypoints[all_matches > 0, :]
         self.all_matches = all_matches
 
-        return self.ransac_localization(matched_query_keypoints, corresponding_landmarks, K, use_p3p=use_p3p)
+        return self.ransac_localization(matched_query_keypoints, corresponding_landmarks, K, use_p3p=use_p3p, tweaked_for_more=tweaked_for_more)
 
     def ransac_localization(self,  matched_query_keypoints, corresponding_landmarks, K, use_p3p=False, tweaked_for_more=True, adaptive=True):
         """
