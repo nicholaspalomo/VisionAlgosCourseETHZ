@@ -113,46 +113,47 @@ def main():
     params["match_lambda"] = 5
 
     # Run ransac with DLT
-    R_C_W, t_C_W, inlier_mask, max_num_inliers_history, num_iteration_history = ransac.detect_localize_landmarks_ransac(p_W_landmarks, K, params, img.gs, keypoints, query_image_path, use_p3p=False)
+    for flag, algo in zip((False, True), ('DLT', 'P3P')):
+        R_C_W, t_C_W, inlier_mask, max_num_inliers_history, num_iteration_history = ransac.detect_localize_landmarks_ransac(p_W_landmarks, K, params, img.gs, keypoints, query_image_path, use_p3p=flag)
 
-    T_C_W = np.concatenate((R_C_W, t_C_W[:,np.newaxis]), axis=1)
-    T_C_W = np.concatenate((T_C_W, np.array([0, 0, 0, 1])[np.newaxis,:]), axis=0)
-    print("Found transformation T_C_W =\n {}".format(T_C_W))
+        T_C_W = np.concatenate((R_C_W, t_C_W[:,np.newaxis]), axis=1)
+        T_C_W = np.concatenate((T_C_W, np.array([0, 0, 0, 1])[np.newaxis,:]), axis=0)
+        print("({}) Found transformation T_C_W =\n {}".format(algo, T_C_W))
 
-    print("Estimated inlier ratio is {}".format(np.count_nonzero(inlier_mask)/inlier_mask.shape[0]))
+        print("({}) Estimated inlier ratio is {}".format(algo, np.count_nonzero(inlier_mask)/inlier_mask.shape[0]))
 
-    _, ax = plt.subplots(1, 1)
-    ax.semilogy(np.arange(1, num_iteration_history.shape[0]+1), num_iteration_history)
-    ax.set_xlabel("Iteration")
-    ax.set_ylabel("Estimated Max Number of Iterations")
+        _, ax = plt.subplots(1, 1)
+        ax.semilogy(np.arange(1, num_iteration_history.shape[0]+1), num_iteration_history)
+        ax.set_xlabel("Iteration")
+        ax.set_ylabel("({}) Estimated Max Number of Iterations".format(algo))
 
-    plt.show()
-    plt.pause(0.1)
-    plt.close()
+        plt.show()
+        plt.pause(0.1)
+        plt.close()
 
-    _, ax = plt.subplots(3, 1)
+        _, ax = plt.subplots(3, 1)
 
-    img = Image()
-    img.load_image(query_image_path)
-    ax[0].imshow(img.gs)
-    ax[0].plot(ransac.query_keypoints[:,1], ransac.query_keypoints[:,0], c='r', marker='x', linewidth=2, linestyle=" ")
-    ransac.plot_matches(ax=ax[0])
-    ax[0].set_title("All keypoints and matches")
+        img = Image()
+        img.load_image(query_image_path)
+        ax[0].imshow(img.gs)
+        ax[0].plot(ransac.query_keypoints[:,1], ransac.query_keypoints[:,0], c='r', marker='x', linewidth=2, linestyle=" ")
+        ransac.plot_matches(ax=ax[0])
+        ax[0].set_title("({}) All keypoints and matches".format(algo))
 
-    ax[1].imshow(img.gs)
-    ax[1].plot(ransac.matched_query_keypoints[(1-inlier_mask)>0, 1], ransac.matched_query_keypoints[(1-inlier_mask)>0, 0], c='r', marker='x', linewidth=2, linestyle=" ")
-    ax[1].plot(ransac.matched_query_keypoints[inlier_mask>0, 1], ransac.matched_query_keypoints[inlier_mask>0, 0], c='g', marker='x', linestyle=" ")
-    ransac.plot_matches(ax=ax[1], mask=True)
-    ax[1].set_title("Inlier and outlier matches")
+        ax[1].imshow(img.gs)
+        ax[1].plot(ransac.matched_query_keypoints[(1-inlier_mask)>0, 1], ransac.matched_query_keypoints[(1-inlier_mask)>0, 0], c='r', marker='x', linewidth=2, linestyle=" ")
+        ax[1].plot(ransac.matched_query_keypoints[inlier_mask>0, 1], ransac.matched_query_keypoints[inlier_mask>0, 0], c='g', marker='x', linestyle=" ")
+        ransac.plot_matches(ax=ax[1], mask=True)
+        ax[1].set_title("({}) Inlier and outlier matches".format(algo))
 
-    ax[2].plot(np.arange(1, max_num_inliers_history.shape[0]+1), max_num_inliers_history)
-    ax[2].set_title("Maximum inlier count over RANSAC iterations")
+        ax[2].plot(np.arange(1, max_num_inliers_history.shape[0]+1), max_num_inliers_history)
+        ax[2].set_title("({}) Maximum inlier count over RANSAC iterations".format(algo))
 
-    plt.show()
-    plt.pause(0.1)
-    plt.close()
+        plt.show()
+        plt.pause(0.1)
+        plt.close()
 
-    ## Part 4 - Repeat the previous part, but for all frames
+    ## Part 5 - Repeat the previous part, but for all frames
 
 if __name__ == '__main__':
 
