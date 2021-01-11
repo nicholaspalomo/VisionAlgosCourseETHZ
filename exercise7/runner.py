@@ -112,7 +112,8 @@ def main():
     params["descriptor_radius"] = 9
     params["match_lambda"] = 5
 
-    R_C_W, t_C_W, inlier_mask, max_num_inliers_history, num_iteration_history = ransac.detect_localize_landmarks_ransac(p_W_landmarks, K, params, img.gs, keypoints, query_image_path)
+    # Run ransac with DLT
+    R_C_W, t_C_W, inlier_mask, max_num_inliers_history, num_iteration_history = ransac.detect_localize_landmarks_ransac(p_W_landmarks, K, params, img.gs, keypoints, query_image_path, use_p3p=False)
 
     T_C_W = np.concatenate((R_C_W, t_C_W[:,np.newaxis]), axis=1)
     T_C_W = np.concatenate((T_C_W, np.array([0, 0, 0, 1])[np.newaxis,:]), axis=0)

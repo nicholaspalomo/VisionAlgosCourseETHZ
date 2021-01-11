@@ -1,13 +1,14 @@
-from re import match
 import numpy as np
 from numpy import matlib
 import cv2 # OpenCV
 import math
 from matplotlib import pyplot as plt
+from numpy.core.fromnumeric import transpose
 from numpy.core.numeric import Inf
 
 from tools.algo.harris import Harris
 from tools.algo.dlt import DLT
+from tools.algo.p3p import P3P
 
 class RANSAC:
     def __init__(self, num_iterations=100):
@@ -65,7 +66,7 @@ class RANSAC:
 
         return best_guess_history, max_num_inliers_history
 
-    def detect_localize_landmarks_ransac(self, p_W_landmarks, K, harris_params, database_img, database_keypoints, query_img_path):
+    def detect_localize_landmarks_ransac(self, p_W_landmarks, K, harris_params, database_img, database_keypoints, query_img_path, use_p3p=False):
 
         self.detector = Harris(harris_params)
 
@@ -85,7 +86,7 @@ class RANSAC:
         self.matched_query_keypoints = query_keypoints[all_matches > 0, :]
         self.all_matches = all_matches
 
-        return self.ransac_localization(matched_query_keypoints, corresponding_landmarks, K)
+        return self.ransac_localization(matched_query_keypoints, corresponding_landmarks, K, use_p3p=use_p3p)
 
     def ransac_localization(self,  matched_query_keypoints, corresponding_landmarks, K, use_p3p=False, tweaked_for_more=False, adaptive=True):
         """
@@ -138,17 +139,40 @@ class RANSAC:
         i = 1
 
         dlt = DLT(K, [0., 0.])
+        p3p = P3P()
+        K_inv = np.linalg.inv(K)
+
+        M_C_W_guess = np.zeros((3,4,4))
         while self.num_iterations > i:
             # Model from k samples (DLT or P3P)
             idx = np.random.choice(corresponding_landmarks.shape[0], self.k, replace=False)
             landmark_sample = corresponding_landmarks[idx, :]
             keypoint_sample = matched_query_keypoints[idx, :]
 
-            # todo(nico): implement p3p
-            # if use_p3p:
-            #   ...
-            # else:
-            M_C_W_guess, _ = dlt.estimate_pose_dlt(keypoint_sample, landmark_sample) # first argument is the 2D correspondence point; second argument is the 3D correspondence point
+            if use_p3p:
+                # Backproject keypoints to unit bearing vectors
+                
+                normalized_bearings = np.matmul(K_inv, np.transpose(np.concatenate((keypoint_sample, np.ones((3,1))), axis=1)))
+                for ii in range(3):
+                    normalized_bearings[ii,:] /= np.linalg.norm(normalized_bearings[ii,:])
+
+                poses = p3p.p3p(np.transpose(landmark_sample), normalized_bearings)
+
+                # Decode p3p output
+                R_C_W_guess = np.zeros((3,3,4))
+                t_C_W_guess = np.zeros((3,1,4))
+                for ii in range(4):
+                    R_W_C_ii = np.real(poses[:, (1+ii*4):(4+ii*4)])
+                    t_W_C_ii = np.real(poses[:, 4*ii])
+
+                    R_C_W_guess[:,:,ii] = np.transpose(R_W_C_ii)
+                    t_C_W_guess[:,:,ii] = -np.matmul(np.transpose(R_W_C_ii), t_W_C_ii[:,np.newaxis])
+
+                M_C_W_guess[:,:3,:] = R_C_W_guess
+                M_C_W_guess[:,-1,:] = t_C_W_guess[:,0,:]
+
+            else:
+                M_C_W_guess[:,:,0], _ = dlt.estimate_pose_dlt(keypoint_sample, landmark_sample) # first argument is the 2D correspondence point; second argument is the 3D correspondence point
 
             # Compute the differences between the matched query keypoints and the projected points
             # Matched query keypoints come from matching the keypoints (e.g. Harris corners) between subsequent frames (hypothesis)
@@ -156,16 +180,27 @@ class RANSAC:
             projected_points = dlt.project_points(\
                 np.matmul(\
                     np.concatenate(\
-                        (corresponding_landmarks, np.ones((corresponding_landmarks.shape[0], 1))), axis=1), M_C_W_guess.transpose())) # p_landmarks,C = R_C_W * P_landmarks,W + t_C_W
+                        (corresponding_landmarks, np.ones((corresponding_landmarks.shape[0], 1))), axis=1), M_C_W_guess[:,:,0].transpose())) # p_landmarks,C = R_C_W * P_landmarks,W + t_C_W
 
             difference = matched_query_keypoints - projected_points
             errors = np.sum(np.square(difference), axis=1)
             is_inlier = errors < self.pixel_tolerance**2
 
             # If we use p3p, also consider inliers for the alternative solutions
-            # todo(nico): implement p3p
-            # if use_p3p:
-            #   ...
+            if use_p3p:
+                for alt_idx in range(3):
+                    projected_points = dlt.project_points(\
+                        np.matmul(\
+                            np.concatenate(\
+                                (corresponding_landmarks, np.ones((corresponding_landmarks.shape[0], 1))), axis=1), M_C_W_guess[:,:,1+alt_idx].transpose()))
+                    
+                    difference = matched_query_keypoints - projected_points
+                    errors = np.sum(np.square(difference), axis=1)
+                    alternative_is_inlier = errors < self.pixel_tolerance**2
+
+                    if np.count_nonzero(alternative_is_inlier) > np.count_nonzero(is_inlier):
+
+                        is_inlier = alternative_is_inlier
             
             if tweaked_for_more:
                 min_inlier_count = 30
@@ -199,8 +234,8 @@ class RANSAC:
             i += 1
 
         if max_num_inliers == 0:
-            R_C_W = None
-            t_C_W = None
+            R_C_W = np.eye(3)
+            t_C_W = np.zeros((3,1))
 
         else:
             M_C_W, _ = dlt.estimate_pose_dlt(matched_query_keypoints[best_inlier_mask > 0,:], corresponding_landmarks[best_inlier_mask > 0,:])
