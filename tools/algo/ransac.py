@@ -154,7 +154,7 @@ class RANSAC:
                 
                 normalized_bearings = np.matmul(K_inv, np.transpose(np.concatenate((keypoint_sample, np.ones((3,1))), axis=1)))
                 for ii in range(3):
-                    normalized_bearings[ii,:] /= np.linalg.norm(normalized_bearings[ii,:])
+                    normalized_bearings[:,ii] /= np.linalg.norm(normalized_bearings[:,ii])
 
                 poses = p3p.p3p(np.transpose(landmark_sample), normalized_bearings)
 
