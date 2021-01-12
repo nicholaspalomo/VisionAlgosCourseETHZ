@@ -9,7 +9,7 @@ class ProcessTextFile:
         self.fname_ = fname
         self.file_contents_ = np.loadtxt(self.fname_, dtype=np.double, comments='#', delimiter=delimiter)
 
-        return self.file_contents_
+        return self.file_contents_.copy()
 
     def write_file(self):
 
