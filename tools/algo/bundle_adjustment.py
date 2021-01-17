@@ -1,12 +1,98 @@
+from os import error
 import numpy as np
 import cv2
 import math
 from matplotlib import pyplot as plt
 from scipy.linalg import expm, logm
 from scipy import optimize
+import scipy.sparse
+
+from tools.algo.perspective_projection import PerspectiveProjection
 
 class BundleAdjustment:
-    def __init__(self):
+    def __init__(self, camera_K_matrix):
+
+        self.K = camera_K_matrix
+
+        return
+
+    def run_bundle_adjustment(self, hidden_state, observations, with_pattern=True):
+        """
+        Update the hidden state, encoded as explained in the problem statement, with 20 bundle adjustment iterations.
+        """
+
+        if with_pattern:
+            num_frames = int(observations[0])
+            num_observations = int((observations.shape[0] - 2 - num_frames) / 3)
+            # Factor 2, one error for each x and y direction
+            num_error_terms = 2 * num_observations
+            # Each error term will depend on one pose (6 entries) and one landmark position (3 entries), so 9 nonzero entries per error term:
+
+            pattern = scipy.sparse.csr_matrix((num_error_terms, hidden_state.shape[0]))
+
+            # Fill pattern for each frame individually:
+            observation_i = 2 # iterator into serialized observations
+            error_i = 0  # iterating frames, need another iterator for the error
+            for frame_i in range(num_frames):
+                num_keypoints_in_frame = int(observations[observation_i])
+                # All errors of a frame are affected by its pose
+                pattern[error_i:error_i+2*num_keypoints_in_frame-1, frame_i*6:(frame_i+1)*6] = 1
+
+                # Each error is then also affected by the corresponding landmark
+                landmark_indices = observations[observation_i+2*num_keypoints_in_frame+1:observation_i+3*num_keypoints_in_frame]
+                
+                for kp_i in range(landmark_indices.shape[0]):
+                    pattern[error_i+kp_i*2:error_i+kp_i*2-1, int(num_frames*6+(landmark_indices[kp_i]-1)*3):int(num_frames*6+landmark_indices[kp_i]*3)] = 1
+
+                observation_i = observation_i + 1 + 3*num_keypoints_in_frame
+                error_i = error_i + 2*num_keypoints_in_frame
+
+            _, ax = plt.subplots(1, 1)
+            plt.spy(pattern)
+            plt.pause(1)
+            plt.close()
+
+            hidden_state = optimize.least_squares(BundleAdjustment.ba_error, hidden_state, args=(observations, self.K), verbose=2, jac_sparsity=pattern)
+        else:
+            hidden_state = optimize.least_squares(BundleAdjustment.ba_error, hidden_state, args=(observations, self.K), verbose=2)
+
+        return
+
+    @staticmethod
+    def ba_error(hidden_state, observations, K, plot_debug=False):
+        """
+        Given hidden_state and observations encoded as explained in the problem statement (and the projection matrix, K), return an Nx2 matrix containing all projection errors
+        """
+
+        num_frames = int(observations[0])
+        T_W_C = np.reshape(hidden_state[:num_frames*6], (6,-1))
+        p_W_landmarks = np.reshape(hidden_state[num_frames*6:], (-1,3))
+
+        error_terms = []
+        # Iterator for the observations that are encoded, as explained in the problem statement
+
+        project = PerspectiveProjection(K, np.array([0, 0, 0, 0]))
+        observation_i = 1
+        for i in range(num_frames):
+            single_T_W_C = BundleAdjustment.twist_2_homog_matrix(T_W_C[:, i])
+            num_frame_observations = int(observations[observation_i + 1])
+
+            keypoints = np.fliplr(np.reshape(observations[observation_i+2:observation_i+1+2*num_frame_observations], (-1, 2)))
+
+            landmark_indices = observations[observation_i+2+2*num_frame_observations:observation_i+1+3*num_frame_observations]
+
+            # Landmarks observed in this specific frame
+            p_W_L = p_W_landmarks[landmark_indices, :]
+
+            # Transforming the observed landmarks into the camera frame for projection
+            num_landmarks = p_W_L.shape[0]
+            T_C_W = single_T_W_C**-1
+            p_C_L = np.transpose(np.matmul(T_C_W[:3,:3], p_W_L.transpose()) + np.tile(T_C_W[:3, 3], (num_landmarks, 1)).transpose())
+
+            # From exercise 1
+            projections = project.project_C_to_I(p_C_L)
+
+            
 
         return
 
