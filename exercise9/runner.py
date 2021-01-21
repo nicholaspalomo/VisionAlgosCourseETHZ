@@ -11,6 +11,7 @@ import os
 import sys
 
 from numpy.core.shape_base import block
+from scipy import optimize
 sys.path.append(".")
 
 from tools.utils.image import Image
@@ -87,7 +88,14 @@ def main():
     # plt.close()
 
     # Run BA and plot
-    optimized_hidden_state = ba.run_bundle_adjustment(hidden_state, observations)
+    optimized_hidden_state = ba.run_bundle_adjustment(cropped_hidden_state, cropped_observations)
+
+    fig = plt.gcf()
+    ba.plot_map(optimized_hidden_state, cropped_observations, [0, 20, -5, 5], ax=fig.gca())
+    fig.gca().set_title('Cropped problem after bundle adjustment')
+    plt.show(block='False')
+    plt.pause(1)
+    plt.close()
 
 if __name__ == '__main__':
 

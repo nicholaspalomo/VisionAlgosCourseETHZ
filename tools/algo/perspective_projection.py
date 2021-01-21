@@ -102,11 +102,12 @@ class PerspectiveProjection:
 
     def project_C_to_I(self, point_in_C, image_distortion=False):
 
-        pixel_coordinates = np.matmul(self.camera_K_matrix_, point_in_C)
+        projected_points = np.matmul(point_in_C, self.camera_K_matrix_.transpose())
+        projected_points /= np.tile(projected_points[:,-1, np.newaxis], (1,3))
         if image_distortion:
-            pixel_coordinates *= point_in_C[2]
+            projected_points = self.distort_points(projected_points)
 
-        return pixel_coordinates[:2] / pixel_coordinates[2], point_in_C[2] # [u, v], lambda
+        return projected_points[:,:2], projected_points[:,2] # [u, v], lambda
 
     def undistort_image(self, image_path, bilinear=True):
         self.load_image(image_path)

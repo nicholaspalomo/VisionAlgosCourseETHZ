@@ -28,7 +28,7 @@ class BundleAdjustment:
             num_error_terms = 2 * num_observations
             # Each error term will depend on one pose (6 entries) and one landmark position (3 entries), so 9 nonzero entries per error term:
 
-            pattern = scipy.sparse.csr_matrix((num_error_terms, hidden_state.shape[0]))
+            pattern = scipy.sparse.lil_matrix((num_error_terms, hidden_state.shape[0]))
 
             # Fill pattern for each frame individually:
             observation_i = 2 # iterator into serialized observations
@@ -47,16 +47,16 @@ class BundleAdjustment:
                 observation_i = observation_i + 1 + 3*num_keypoints_in_frame
                 error_i = error_i + 2*num_keypoints_in_frame
 
-            _, ax = plt.subplots(1, 1)
-            plt.spy(pattern)
-            plt.pause(1)
-            plt.close()
+            # _, ax = plt.subplots(1, 1)
+            # plt.spy(pattern)
+            # plt.pause(1)
+            # plt.close()
 
             hidden_state = optimize.least_squares(BundleAdjustment.ba_error, hidden_state, args=(observations, self.K), verbose=2, jac_sparsity=pattern)
         else:
             hidden_state = optimize.least_squares(BundleAdjustment.ba_error, hidden_state, args=(observations, self.K), verbose=2)
 
-        return
+        return hidden_state["x"]
 
     @staticmethod
     def ba_error(hidden_state, observations, K, plot_debug=False):
@@ -64,8 +64,11 @@ class BundleAdjustment:
         Given hidden_state and observations encoded as explained in the problem statement (and the projection matrix, K), return an Nx2 matrix containing all projection errors
         """
 
+        # if plot_debug:
+        #     fig, _ = plt.subplots()
+
         num_frames = int(observations[0])
-        T_W_C = np.reshape(hidden_state[:num_frames*6], (6,-1))
+        T_W_C = np.reshape(hidden_state[:num_frames*6], (-1,6))
         p_W_landmarks = np.reshape(hidden_state[num_frames*6:], (-1,3))
 
         error_terms = []
@@ -74,27 +77,42 @@ class BundleAdjustment:
         project = PerspectiveProjection(K, np.array([0, 0, 0, 0]))
         observation_i = 1
         for i in range(num_frames):
-            single_T_W_C = BundleAdjustment.twist_2_homog_matrix(T_W_C[:, i])
+            single_T_W_C = BundleAdjustment.twist_2_homog_matrix(T_W_C[i, :])
             num_frame_observations = int(observations[observation_i + 1])
 
-            keypoints = np.fliplr(np.reshape(observations[observation_i+2:observation_i+1+2*num_frame_observations], (-1, 2)))
+            keypoints = np.fliplr(np.reshape(observations[observation_i+2:observation_i+2+2*num_frame_observations], (-1, 2)))
 
-            landmark_indices = observations[observation_i+2+2*num_frame_observations:observation_i+1+3*num_frame_observations]
+            landmark_indices = observations[observation_i+2+2*num_frame_observations:observation_i+2+3*num_frame_observations].astype(np.int) - 1 # NOTE: subtract 1 here because landmark indices are given using 1-based indexing (i.e. for MATLAB)
 
             # Landmarks observed in this specific frame
             p_W_L = p_W_landmarks[landmark_indices, :]
 
             # Transforming the observed landmarks into the camera frame for projection
             num_landmarks = p_W_L.shape[0]
-            T_C_W = single_T_W_C**-1
+            T_C_W = np.linalg.inv(single_T_W_C)
             p_C_L = np.transpose(np.matmul(T_C_W[:3,:3], p_W_L.transpose()) + np.tile(T_C_W[:3, 3], (num_landmarks, 1)).transpose())
 
             # From exercise 1
-            projections = project.project_C_to_I(p_C_L)
+            projections, _ = project.project_C_to_I(p_C_L)
 
-            
+            # Can be used to verify that the projections are reasonable
+            if plot_debug:
+                fig = plt.gcf()
+                fig.gca().scatter(projections[:,0], projections[:,1])
+                fig.gca().scatter(keypoints[:,0], keypoints[:,1])
+                fig.gca().set_aspect('equal', 'box')
+                plt.show(block=False)
+                plt.pause(0.01)
+                plt.cla()
 
-        return
+            error_terms.append(keypoints - projections)
+
+            observation_i += (3 * num_frame_observations + 1)
+
+        if plot_debug:
+            plt.close()
+
+        return np.concatenate(error_terms, axis=0).reshape((-1,))
 
     def align_estimate_to_ground_truth(self, pp_G_C, p_V_C):
         """
@@ -175,27 +193,27 @@ class BundleAdjustment:
         else:
             ground_truth_ = ground_truth.copy()
 
-        num_frames = observations[0]
+        num_frames = int(observations[0])
         assert cropped_num_frames < num_frames, "cropped_num_frames should be less than num_frames"
 
         observation_i = 2
         cropped_num_landmarks = 0
         for i in range(cropped_num_frames):
-            num_observations = observations[observation_i]
+            num_observations = int(observations[observation_i])
             if i == cropped_num_frames-1:
-                cropped_num_landmarks = np.max(observations[int(observation_i + 1 + num_observations*2):int(observation_i + num_observations*3)])
+                cropped_num_landmarks = int(np.max(observations[(observation_i + 1 + num_observations*2):(observation_i + num_observations*3)]))
             
-            observation_i += int(num_observations*3 + 1)
+            observation_i += (num_observations*3 + 1)
 
         cropped_hidden_state = np.concatenate(( \
             hidden_state[:6*cropped_num_frames, np.newaxis], \
-            hidden_state[int(6*num_frames):int(6*num_frames + 3*cropped_num_landmarks), np.newaxis]), axis = 0) # (nico) : should first index here be 6*num_frames + 1?
+            hidden_state[(6*num_frames):(6*num_frames + 3*(cropped_num_landmarks+1)), np.newaxis]), axis = 0) # (nico) : should first index here be 6*num_frames + 1?
 
         cropped_observations = np.concatenate(( \
             np.array([[cropped_num_frames], [cropped_num_landmarks]]), \
-            observations[2:observation_i-1, np.newaxis]), axis=0)
+            observations[2:observation_i, np.newaxis]), axis=0)
 
-        cropped_ground_truth = ground_truth_[0:cropped_num_frames,:]
+        cropped_ground_truth = ground_truth_[:cropped_num_frames,:]
 
         return np.squeeze(cropped_hidden_state), np.squeeze(cropped_observations), cropped_ground_truth
 
