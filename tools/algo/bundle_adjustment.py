@@ -54,11 +54,11 @@ class BundleAdjustment:
                 plt.pause(1)
                 plt.close()
 
-            hidden_state = optimize.least_squares(BundleAdjustment.ba_error, hidden_state, args=(observations, self.K), verbose=2, jac_sparsity=pattern)
+            hidden_state_opt = optimize.least_squares(BundleAdjustment.ba_error, hidden_state, args=(observations, self.K), verbose=2, jac_sparsity=pattern)
         else:
-            hidden_state = optimize.least_squares(BundleAdjustment.ba_error, hidden_state, args=(observations, self.K), verbose=2)
+            hidden_state_opt = optimize.least_squares(BundleAdjustment.ba_error, hidden_state, args=(observations, self.K), verbose=2)
 
-        return hidden_state["x"]
+        return hidden_state_opt["x"]
 
     @staticmethod
     def ba_error(hidden_state, observations, K, plot_debug=False):
@@ -133,9 +133,9 @@ class BundleAdjustment:
 
         num_frames = p_V_C.shape[0]
 
-        return np.transpose(scale_G_V * np.matmul(T_G_V[:3, :3], p_V_C.transpose()) + np.tile(T_G_V[:3, 3], (num_frames, 1)).transpose()) # p_G_C
+        return np.transpose(scale_G_V * np.matmul(T_G_V[:3, :3], p_V_C.transpose()) + np.tile(T_G_V[:3, -1], (num_frames, 1)).transpose()) # p_G_C
 
-    def plot_map(self, hidden_state, observations, ax_range, ax=plt.gca()):
+    def plot_map(self, hidden_state, observations, ax=plt.gca()):
 
         num_frames = int(observations[0])
         T_W_frames = np.reshape(hidden_state[:6*num_frames], (6,-1), order='F')
@@ -150,7 +150,6 @@ class BundleAdjustment:
         ax.scatter(p_W_frames[2, :], -p_W_frames[0, :], s=2, marker='x', color='r')
 
         ax.axis('equal')
-        ax.axis(ax_range)
 
         return
 
@@ -161,7 +160,7 @@ class BundleAdjustment:
         """
 
         T_G_V = BundleAdjustment.twist_2_homog_matrix(x[:6])
-        scale_G_V = x[6]
+        scale_G_V = x[-1]
 
         num_frames = p_V_C.shape[0]
         p_G_C = np.transpose( scale_G_V * np.matmul(T_G_V[:3, :3], p_V_C.transpose()) + np.tile(T_G_V[:3, 3], (num_frames, 1)).transpose() )
