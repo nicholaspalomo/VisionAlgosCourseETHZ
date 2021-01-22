@@ -16,7 +16,7 @@ class BundleAdjustment:
 
         return
 
-    def run_bundle_adjustment(self, hidden_state, observations, with_pattern=True):
+    def run_bundle_adjustment(self, hidden_state, observations, with_pattern=True, sparsity_plot=False):
         """
         Update the hidden state, encoded as explained in the problem statement, with 20 bundle adjustment iterations.
         """
@@ -28,8 +28,7 @@ class BundleAdjustment:
             num_error_terms = 2 * num_observations
             # Each error term will depend on one pose (6 entries) and one landmark position (3 entries), so 9 nonzero entries per error term:
 
-            pattern = scipy.sparse.lil_matrix((num_error_terms, hidden_state.shape[0]))
-
+            pattern = scipy.sparse.csc_matrix((num_error_terms, hidden_state.shape[0]))
             # Fill pattern for each frame individually:
             observation_i = 2 # iterator into serialized observations
             error_i = 0  # iterating frames, need another iterator for the error
@@ -42,15 +41,18 @@ class BundleAdjustment:
                 landmark_indices = observations[observation_i+2*num_keypoints_in_frame+1:observation_i+3*num_keypoints_in_frame]
                 
                 for kp_i in range(landmark_indices.shape[0]):
-                    pattern[error_i+kp_i*2:error_i+kp_i*2-1, int(num_frames*6+(landmark_indices[kp_i]-1)*3):int(num_frames*6+landmark_indices[kp_i]*3)] = 1
+                    pattern[\
+                        error_i+kp_i*2:error_i+(kp_i+1)*2-1, \
+                        int(num_frames*6+(landmark_indices[kp_i]-1)*3):int(num_frames*6+landmark_indices[kp_i]*3)] = 1
 
-                observation_i = observation_i + 1 + 3*num_keypoints_in_frame
-                error_i = error_i + 2*num_keypoints_in_frame
+                observation_i += (1 + 3*num_keypoints_in_frame)
+                error_i += 2*num_keypoints_in_frame
 
-            # _, ax = plt.subplots(1, 1)
-            # plt.spy(pattern)
-            # plt.pause(1)
-            # plt.close()
+            if sparsity_plot:
+                plt.spy(pattern)
+                plt.show(block='False')
+                plt.pause(1)
+                plt.close()
 
             hidden_state = optimize.least_squares(BundleAdjustment.ba_error, hidden_state, args=(observations, self.K), verbose=2, jac_sparsity=pattern)
         else:
@@ -63,9 +65,6 @@ class BundleAdjustment:
         """
         Given hidden_state and observations encoded as explained in the problem statement (and the projection matrix, K), return an Nx2 matrix containing all projection errors
         """
-
-        # if plot_debug:
-        #     fig, _ = plt.subplots()
 
         num_frames = int(observations[0])
         T_W_C = np.reshape(hidden_state[:num_frames*6], (-1,6))
@@ -140,7 +139,7 @@ class BundleAdjustment:
 
         num_frames = int(observations[0])
         T_W_frames = np.reshape(hidden_state[:6*num_frames], (6,-1), order='F')
-        p_W_landmarks = np.reshape(hidden_state[6*num_frames:], (3,-1))
+        p_W_landmarks = np.reshape(hidden_state[6*num_frames:], (3,-1), order='F')
 
         p_W_frames = np.zeros((3, num_frames))
         for i in range(num_frames):
@@ -169,7 +168,7 @@ class BundleAdjustment:
 
         errors = pp_G_C - p_G_C
 
-        return np.reshape(errors, (-1,), order='F')
+        return np.reshape(errors, (-1,))
 
     def crop_problem(self, hidden_state, observations, ground_truth, cropped_num_frames):
         """
