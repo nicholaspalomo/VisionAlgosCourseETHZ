@@ -21,6 +21,12 @@ class Image:
 
         return
 
+    def imresize(self, scale):
+
+        self.gs = cv2.resize(self.gs, dsize=(int(scale * self.gs.shape[1]), int(scale * self.gs.shape[0])), interpolation=cv2.INTER_CUBIC)
+
+        return
+
     def display_image(self):
         plt.imshow(self.gs)
         plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
