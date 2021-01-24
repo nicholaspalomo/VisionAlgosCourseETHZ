@@ -51,7 +51,7 @@ class Image:
     @staticmethod
     def imshow(img):
 
-        plt.imshow(self.gs)
+        plt.imshow(img)
         plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
         plt.show(block=False)
 

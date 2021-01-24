@@ -52,7 +52,7 @@ def main():
     stereo = Stereo(params)
 
     tic = time.time()
-    disp_img = stereo.get_disparity(left_img, right_img)
+    disp_img = stereo.get_disparity(left_img.gs, right_img.gs)
     toc = time.time() - tic
     print("time elapsed: {}".format(toc))
 
