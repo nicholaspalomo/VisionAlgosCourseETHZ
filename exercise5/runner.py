@@ -9,11 +9,13 @@ import pathlib
 import cv2
 import os
 import sys
+import time
 
 sys.path.append(".")
 
 from tools.utils.image import Image
 from tools.utils.process_text_file import ProcessTextFile
+from tools.algo.stereo import Stereo
 
 def main():
 
@@ -47,6 +49,18 @@ def main():
         })
 
     # Parts 1, 2, and 4: Disparity on one image pair
+    stereo = Stereo(params)
+
+    tic = time.time()
+    disp_img = stereo.get_disparity(left_img, right_img)
+    toc = time.time() - tic
+    print("time elapsed: {}".format(toc))
+
+    fig = plt.gcf()
+    Image.imagesc(disp_img)
+    fig.gca().axis('equal')
+    plt.xticks([])
+    plt.yticks([])
 
 if __name__ == '__main__':
 
