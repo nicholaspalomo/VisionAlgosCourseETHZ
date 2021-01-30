@@ -61,6 +61,9 @@ def main():
     fig.gca().axis('equal')
     plt.xticks([])
     plt.yticks([])
+    plt.show(block=False)
+    plt.pause(1)
+    plt.close()
 
 if __name__ == '__main__':
 
