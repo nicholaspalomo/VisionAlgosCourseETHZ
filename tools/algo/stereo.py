@@ -26,8 +26,6 @@ class Stereo:
         disp_img = np.zeros(left_img.shape)
         rows, cols = left_img.shape[0], left_img.shape[1]
 
-        # for row in range(r, rows-r): # todo(nico) : replace this for with parfor. See example in exercise 8
-
         def dummy(*args):
 
             @parfor(args[0])
@@ -74,16 +72,13 @@ class Stereo:
                         if np.count_nonzero(ssds <= 1.5 * min_ssd) < 3 and neg_disp != 1 and neg_disp != ssds.shape[0]:
                             if not refine_estimate:
                                 disp_img_col[col - (self.max_disp+r)] = self.max_disp - neg_disp
-                                # disp_img[row, col] = self.max_disp - neg_disp
                             else:
                                 x = np.array([neg_disp-1, neg_disp, neg_disp+1])
                                 p = np.polyfit(x, ssds[x], 2)
                                 # Minimum of p(1)x^2 + p(2)x + p(3), converted from neg_disp to disparity as above
 
                                 disp_img_col[col - (self.max_disp+r)] = self.max_disp + p[1]/(2 * p[0])
-                                # disp_img[row, col] = self.max_disp + p[1]/(2 * p[0])
                     else:
-                        # disp_img[row, col] = self.max_disp - neg_disp
                         disp_img_col[col - (self.max_disp+r)] = self.max_disp - neg_disp
 
                 if debug_ssds:
