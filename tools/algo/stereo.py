@@ -14,7 +14,7 @@ class Stereo:
         self.ylims = params['ylims']
         self.zlims = params['zlims']
 
-    def get_disparity(self, left_img, right_img, debug_ssds=False, reject_outliers=False, refine_estimate=True):
+    def get_disparity(self, left_img, right_img, debug_ssds=False, reject_outliers=True, refine_estimate=True):
         """
         left_img and right_img are both H x W and this method returns an H x W matrix containing the disparity, d, for each pixel of left_img.
         disp_img is set to 0 fir pixels where the SSD and/or d is not defined, and for d, estimates are rejected in Part 2. patch_radius specifies the SSD patch and each valid d should satisfy min_disp <= d <= max_disp
@@ -39,12 +39,12 @@ class Stereo:
                     right_strip = right_img[row-r:row+r+1, col-r-self.max_disp:col+r-self.min_disp+1]
 
                     # Transforming the patches into vectors so that they can be used with pdist2
-                    lpvec = np.reshape(left_patch, (1,-1))
+                    lpvec = np.reshape(left_patch, (1,-1), order='F')
                     rsvecs = np.zeros((patch_size**2, self.max_disp - self.min_disp + 1))
                     for i in range(patch_size):
                         rsvecs[i*patch_size:(i+1)*patch_size, :] = right_strip[:, i:(self.max_disp - self.min_disp + i + 1)] # create a matrix of sub-patches of right_strip in order to find which disparity best describes the right_strip under consideration
 
-                    ssds = cdist(lpvec, rsvecs.transpose(), metric='euclidean').transpose()
+                    ssds = cdist(lpvec, rsvecs.transpose(), metric='sqeuclidean').transpose()
 
                     if debug_ssds:
                         ax[0].cla()
@@ -69,12 +69,12 @@ class Stereo:
                     neg_disp = np.argmin(ssds)
 
                     if reject_outliers:
-                        if np.count_nonzero(ssds <= 1.5 * min_ssd) < 3 and neg_disp != 1 and neg_disp != ssds.shape[0]:
+                        if np.count_nonzero(ssds <= 1.5 * min_ssd) < 3 and neg_disp != 0 and neg_disp != ssds.shape[0]-1:
                             if not refine_estimate:
                                 disp_img_col[col - (self.max_disp+r)] = self.max_disp - neg_disp
                             else:
                                 x = np.array([neg_disp-1, neg_disp, neg_disp+1])
-                                p = np.polyfit(x, ssds[x], 2)
+                                p = np.polyfit(x, ssds[x[:]], 2)
                                 # Minimum of p(1)x^2 + p(2)x + p(3), converted from neg_disp to disparity as above
 
                                 disp_img_col[col - (self.max_disp+r)] = self.max_disp + p[1]/(2 * p[0])
