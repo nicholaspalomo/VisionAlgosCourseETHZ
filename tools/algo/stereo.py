@@ -5,14 +5,18 @@ from matplotlib import pyplot as plt
 from scipy.spatial.distance import cdist
 from parfor import parfor
 
+from tools.utils.image import Image
+
 class Stereo:
-    def __init__(self, params):
+    def __init__(self, params, K, baseline):
         self.patch_radius = params['patch_radius']
         self.min_disp = params['min_disp']
         self.max_disp = params['max_disp']
         self.xlims = params['xlims']
         self.ylims = params['ylims']
         self.zlims = params['zlims']
+        self.K = K
+        self.baseline = baseline
 
     def get_disparity(self, left_img, right_img, debug_ssds=False, reject_outliers=True, refine_estimate=True):
         """
@@ -94,3 +98,47 @@ class Stereo:
             disp_img[i,self.max_disp+r:cols-r] = disp_img_cols[i-r]
 
         return disp_img
+
+    def disparity_to_point_cloud(self, disp_img, left_img):
+        """
+        Points should be Nx3 and intensities Nx1 where N is the number of pixels which have a valid disparity. This method returns only points and intensities for pixels of left_img which have a valid disparity estimate.
+        The i-th intensity corresponds to the i-th point.
+        """
+
+        xy = Image.meshgrid(disp_img.shape[1], disp_img.shape[0])
+
+        px_left = np.concatenate(\
+            (xy[:,:,1].reshape((-1,1), order='F'),\
+            xy[:,:,0].reshape((-1,1), order='F'),\
+            xy[:,:,2].reshape((-1,1), order='F')),\
+            axis=1)
+
+        # Corresponding pixels in right image = pixel coords in left image minus disparity
+        px_right = px_left.copy()
+        px_right[:,1] -= np.reshape(disp_img, (-1,), order='F')
+
+        # Switch from (row, col, 1) to (u, v, 1)
+        px_left[:,:2] = np.fliplr(px_left[:,:2])
+        px_right[:,:2] = np.fliplr(px_right[:,:2])
+
+        # Filter out pixels that do not have a valid disparity
+        px_left = px_left[disp_img.reshape((-1,), order='F') > 0, :]
+        px_right = px_right[disp_img.reshape((-1,), order='F') > 0, :]
+
+        # Reproject pixels: Get bearing vectors of rays in camera frame
+        bv_left = np.matmul(np.linalg.inv(self.K), px_left.transpose()).transpose()
+        bv_right = np.matmul(np.linalg.inv(self.K), px_right.transpose()).transpose()
+
+        # Intersect rays according to formula in problem statement
+        points = np.zeros(px_left.shape)
+        b = np.array([self.baseline, 0, 0]).reshape((3,1))
+        for i in range(px_left.shape[0]):
+            A = np.concatenate((bv_left[i,:], -bv_right[i,:]), axis=0).reshape((3,2), order='F')
+            lamda = np.matmul(\
+                np.linalg.inv(np.matmul(A.transpose(), A)), 
+                np.matmul(A.transpose(), b))
+            points[i,:] = bv_left[i,:] * lamda[0]
+
+        intensities = left_img.reshape((-1,), order='F')[disp_img.reshape((-1,), order='F') > 0]
+
+        return points, intensities # return the points given in X-Y-Z of the CAMERA frame

@@ -56,3 +56,9 @@ class Image:
         plt.show(block=False)
 
         return
+
+    @staticmethod
+    def meshgrid(x_dim, y_dim):
+        mesh_x, mesh_y = np.meshgrid(np.linspace(0, x_dim-1, x_dim), np.linspace(0, y_dim-1, y_dim))
+
+        return np.dstack((mesh_x, mesh_y, np.ones((mesh_x.shape))))
