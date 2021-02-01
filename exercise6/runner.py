@@ -1,0 +1,1 @@
+# Runner script for exercise 6 (Multiple-view Geometry 2, Lecture 8)
