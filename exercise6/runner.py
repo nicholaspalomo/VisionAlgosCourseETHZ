@@ -64,10 +64,29 @@ def run_test_8point():
         [0., 0., 1., 0.]\
         ])
 
-    x1 = np.matmul(P1, X) # Image (i.e., projected points)
-    x2 = np.matmul(P2, X)
+    x1 = np.matmul(X, P1.transpose()) # Image (i.e., projected points)
+    x2 = np.matmul(X, P2.transpose())
 
-    
+    sigma = 1e-1
+    noisy_x1 = x1 + sigma * np.random.rand(x1.shape[0], x1.shape[1])
+    noisy_x2 = x2 + sigma * np.random.rand(x2.shape[0], x2.shape[1])
+
+    ## Fundamental matrix estimation via the 8-point algorithm
+
+    # Estimate fundamental matrix
+    # Call the 8-points algorithm on inputs x1, x2
+    # Also check the epipolar constraint x2[i].transpose() * F * x1[i] = 0 for all points i.
+    F, cost_dist_epi_line, cost_algebraic = EightPoint.fundamental_eight_point(x1, x2, compute_costs=True)
+
+    print("Noise-free correspondences\n")
+    print("Algebraic error: {}\n".format(cost_algebraic))
+    print("Geometric error: {} px\n".format(cost_dist_epi_line))
+
+    F, cost_dist_epi_line, cost_algebraic = EightPoint.fundamental_eight_point(noisy_x1, noisy_x2, compute_costs=True)
+
+    print("Noise-free correspondences (sigma={}) with fundamentalEightPoint\n".format(sigma))
+    print("Algebraic error: {}\n".format(cost_algebraic))
+    print("Geometric error: {} px\n".format(cost_dist_epi_line))
 
     return
 

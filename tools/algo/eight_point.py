@@ -12,7 +12,8 @@ class EightPoint:
 
         return
 
-    def fundamental_eight_point(self, p1, p2):
+    @staticmethod
+    def fundamental_eight_point(p1, p2, compute_costs=False):
         """
         The 8-point algorithm for the estimation of the fundamental matrix, F, with a posteriori enforcement of the singularity constraint, det(F) = 0. Does not include data normalization.
         
@@ -26,15 +27,15 @@ class EightPoint:
         F(3,3): fundamental matrix
         """
         num_points = p1.shape[0]
-        if p1.shape[1] > 2 or p2.shape[1] > 2:
+        if p1.shape[1] != 3 or p2.shape[1] != 3:
             assert "Must provide 2D points!"
         if p1.shape[0] < 8 or p2.shape[0] < 8:
             assert "Must provide at least eight 2D points!"
 
         # Compute the measurement matrix A of the linear homogeneous system whose solution is the vector representing the fundamental matrix.
-        Q = np.zeros(num_points, 9)
+        Q = np.zeros((num_points, 9))
         for i in range(num_points):
-            Q[i,:] = np.kron(p1[i,:], p2[i,:]).transpose()
+            Q[i,:] = np.kron(p1[i,:], p2[i,:])
         
         # ''Solve'' the linear homogeneous system of equations, A*f = 0
         # The correspondences x1, x2 are exact <=> rank(A) = 8 -> there exists an exact solution
@@ -44,10 +45,51 @@ class EightPoint:
 
         # Enforce det(F) = 0 by projecting F onto the set of 3x3 singular matrices
         U, S, Vt = np.linalg.svd(F)
-        S[-1,-1] = 0
+        S[-1] = 0
+        S = np.diag(S, k=0)
         F = np.matmul(U, np.matmul(S, Vt))
 
-        return F
+        cost_dist_epi_line = math.inf
+        cost_algebraic = math.inf
+        if compute_costs:
+            cost_algebraic = np.linalg.norm(\
+                np.sum(\
+                    np.multiply(p2, np.matmul(p1, F.transpose())))) / math.sqrt(num_points)
+
+            cost_dist_epi_line = EightPoint.dist_2_epipolar_line(F, p1, p2)
+
+        return F, cost_dist_epi_line, cost_algebraic
+
+    @staticmethod
+    def dist_2_epipolar_line(F, p1, p2):
+        """
+        Compute the point-to-epipolar line distance on the image plane
+
+        Input:
+        F (3 x 3): Fundamental matrix
+        p1 (NumPoints x 3): Homogeneous coordinates of the observed points in image 1
+        p2 (NumPoints x 3): Homogeneous coordinates of the observed points in image 2
+
+        Output:
+        Cost: sum of squared distance from points to epipolar lines normalized by the number of point coordinates
+        """
+
+        num_points = p1.shape[0]
+        
+        homog_points = np.concatenate((p1, p2), axis=0).transpose()
+        epi_lines = np.concatenate((\
+            np.matmul(F.transpose(), p2.transpose()),\
+            np.matmul(F, p1.transpose())\
+            ), axis=1)
+
+        denom = epi_lines[0,:]**2 + epi_lines[1,:]**2
+
+        cost = math.sqrt(\
+            np.sum(\
+                (np.sum(\
+                    np.multiply(epi_lines, homog_points), axis=0)**2) / denom) / num_points)
+
+        return cost
 
     def estimate_essential_matrix(self, p1, p2):
 
