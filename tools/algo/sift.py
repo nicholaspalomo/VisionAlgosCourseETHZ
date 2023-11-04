@@ -15,7 +15,8 @@ class SIFT():
 
         img_pyramid = [img]
         for i in range(1, self.params["num_octaves"]):
-
+            
+            # The input to each octave is an image downsampled by 2^o where o is the index of the octave
             dsize = (img_pyramid[i-1].shape[0] / 2, img_pyramid[i-1].shape[1] / 2) 
 
             img_pyramid.append(cv2.resize(img_pyramid[i-1], dsize))
@@ -23,7 +24,8 @@ class SIFT():
         return img_pyramid
 
     def compute_blurred_images(self, img):
-
+        
+        # For each octave of the image pyramid apply Gaussian blurring recursively num_scales number of times and append the resulting blurred image to the pyramid
         volume = []
         for o in range(self.params["num_octaves"]):
             volume.append(np.zeros((img[o].shape[0], img[o].shape[1], self.params["num_scales"]+3)))
@@ -38,9 +40,12 @@ class SIFT():
 
     def compute_DoGs(self, blurred_imgs):
 
+        # Compute the difference of Gaussians over the blurred image pyramids
         DoGs = []
         for i in range(self.params["num_octaves"]):
             DoG_shape = blurred_imgs[i].shape
+
+            # Since we're computing the difference between adjacent octaves of the blurred image pyramid, the resulting DoG pyramid will be num_octaves-1 deep
             DoG_shape[2] -= 1
 
             DoG = np.zeros(DoG_shape)
@@ -56,6 +61,7 @@ class SIFT():
 
     def extract_keypoints_from_DoGs(self, DoGs):
 
+        # Find the keypoints in the difference of Gaussians. A keypoint is defined as a voxel in the DoG that is higher than its neighbors in scale and space.
         keypoint_locations = []
         for i in range(self.params["num_octaves"]):
             DoG = DoGs[i]
